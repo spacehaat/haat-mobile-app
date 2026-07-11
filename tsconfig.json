@@ -1,0 +1,22 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "paths": {
+      "@spacehaat/api-client": ["./packages/api-client/src/index.js"],
+      "@spacehaat/api-client/*": ["./packages/api-client/src/*"],
+      "@spacehaat/types": ["./packages/types/src/index.js"],
+      "@spacehaat/utils": ["./packages/utils/src/index.js"],
+      "@spacehaat/access": ["./packages/access/src/index.js"],
+      "@spacehaat/inventory-schema": ["./packages/inventory-schema/src/index.js"]
+    }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "**/*.js",
+    "**/*.jsx",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
+  ]
+}

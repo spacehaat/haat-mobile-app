@@ -1,0 +1,11 @@
+node_modules
+.expo
+dist
+.turbo
+.env
+.env.local
+*.log
+.DS_Store
+
+# @generated expo-cli
+expo-env.d.ts
