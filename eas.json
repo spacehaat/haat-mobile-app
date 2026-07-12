@@ -25,7 +25,8 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.spacehaat.in"
+        "EXPO_PUBLIC_API_URL": "https://haat-backend.onrender.com",
+        "EXPO_PUBLIC_PORTAL_URL": "https://haat-web-app.vercel.app"
       }
     },
     "testflight": {
@@ -51,7 +52,8 @@
       "channel": "production",
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.spacehaat.in"
+        "EXPO_PUBLIC_API_URL": "https://haat-backend.onrender.com",
+        "EXPO_PUBLIC_PORTAL_URL": "https://haat-web-app.vercel.app"
       }
     }
   },

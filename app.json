@@ -5,7 +5,10 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "spacehaat",
-    "platforms": ["ios", "android"],
+    "platforms": [
+      "ios",
+      "android"
+    ],
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "icon": "./assets/icon.png",
@@ -17,7 +20,10 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "in.spacehaat.app",
-      "associatedDomains": ["applinks:app.spacehaat.in"],
+      "associatedDomains": [
+        "applinks:app.spacehaat.in",
+        "applinks:app.spacehaat.in"
+      ],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSUserNotificationsUsageDescription": "Spacehaat sends alerts when leads are assigned or follow-ups are overdue.",
@@ -30,7 +36,12 @@
         "backgroundColor": "#4CAF50"
       },
       "package": "in.spacehaat.app",
-      "permissions": ["RECEIVE_BOOT_COMPLETED", "VIBRATE"],
+      "permissions": [
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE"
+      ],
       "intentFilters": [
         {
           "action": "VIEW",
@@ -57,7 +68,40 @@
               "pathPrefix": "/p"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        },
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "spacehaat",
+              "host": "*",
+              "pathPrefix": "/leads"
+            },
+            {
+              "scheme": "spacehaat",
+              "host": "*",
+              "pathPrefix": "/p"
+            },
+            {
+              "scheme": "https",
+              "host": "app.spacehaat.in",
+              "pathPrefix": "/leads"
+            },
+            {
+              "scheme": "https",
+              "host": "app.spacehaat.in",
+              "pathPrefix": "/p"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -83,7 +127,16 @@
       "router": {
         "origin": "spacehaat://"
       },
-      "eas": {}
+      "eas": {
+        "projectId": "46e050c8-45f4-4549-b44f-ef3f3fd6d5f5"
+      }
+    },
+    "owner": "haat-apps-team",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/46e050c8-45f4-4549-b44f-ef3f3fd6d5f5"
     }
   }
 }
