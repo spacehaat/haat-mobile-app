@@ -92,6 +92,7 @@ export const INV_SCHEMA = [
     { p: 'contactsMedia.carParkingSpaces', l: 'Car parking spaces', t: 'num' },
     { p: 'contactsMedia.twoWheelerSpaces', l: '2-wheeler parking spaces', t: 'num' },
     { p: 'core.amenities', l: 'Extra amenities', t: 'chips', choices: () => AMENITIES },
+    { p: 'images', l: 'Workspace photos', t: 'images' },
     { p: 'contactsMedia.brochure', l: 'Brochure / proposal PDF', ph: 'file name or link' },
     { p: 'contactsMedia.website', l: 'Website link' },
     { p: 'contactsMedia.virtualTour', l: 'Virtual tour (YouTube)' },
@@ -131,6 +132,17 @@ export function readListingPath(listing, path) {
   if (path.startsWith('core.')) {
     const key = path.slice(5);
     return listing[key];
+  }
+  if (path === 'images') {
+    const imgs = listing.images || [];
+    if (!imgs.length) return undefined;
+    const meta = listing.photoMeta || [];
+    return imgs.map((src, i) => ({
+      uri: src,
+      src,
+      label: meta[i]?.label || '',
+      price: meta[i]?.price ?? '',
+    }));
   }
   return getNested(listing.profile, path);
 }

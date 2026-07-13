@@ -21,7 +21,6 @@
       "supportsTablet": true,
       "bundleIdentifier": "in.spacehaat.app",
       "associatedDomains": [
-        "applinks:app.spacehaat.in",
         "applinks:app.spacehaat.in"
       ],
       "infoPlist": {
@@ -33,46 +32,17 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#4CAF50"
+        "backgroundColor": "#4CAF50",
+        "monochromeImage": "./assets/notification-icon.png"
       },
       "package": "in.spacehaat.app",
+      "googleServicesFile": "./google-services.json",
       "permissions": [
         "RECEIVE_BOOT_COMPLETED",
         "VIBRATE",
-        "RECEIVE_BOOT_COMPLETED",
-        "VIBRATE"
+        "POST_NOTIFICATIONS"
       ],
       "intentFilters": [
-        {
-          "action": "VIEW",
-          "autoVerify": true,
-          "data": [
-            {
-              "scheme": "spacehaat",
-              "host": "*",
-              "pathPrefix": "/leads"
-            },
-            {
-              "scheme": "spacehaat",
-              "host": "*",
-              "pathPrefix": "/p"
-            },
-            {
-              "scheme": "https",
-              "host": "app.spacehaat.in",
-              "pathPrefix": "/leads"
-            },
-            {
-              "scheme": "https",
-              "host": "app.spacehaat.in",
-              "pathPrefix": "/p"
-            }
-          ],
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ]
-        },
         {
           "action": "VIEW",
           "autoVerify": true,
@@ -116,6 +86,12 @@
           "icon": "./assets/notification-icon.png",
           "color": "#4CAF50",
           "sounds": []
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Spacehaat to attach workspace photos to listings."
         }
       ]
     ],
