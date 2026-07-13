@@ -15,6 +15,7 @@ import LoadingScreen from '../../../components/ui/LoadingScreen';
 import ListingDetailSections from '../../../components/ui/ListingDetailSections';
 import ListingGalleryCarousel from '../../../components/ui/ListingGalleryCarousel';
 import GallerySheet from '../../../components/ui/GallerySheet';
+import ConfirmDialog from '../../../components/ui/ConfirmDialog';
 import { coverImg, allGalleryPhotos } from '../../../lib/listingHelpers';
 import { colors } from '../../../constants/theme';
 import { inr } from '@spacehaat/utils';
@@ -31,6 +32,7 @@ export default function ListingDetailScreen() {
   const { isInProposal, addToProposal, removeFromProposal } = useProposal();
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [galleryIndex, setGalleryIndex] = useState(0);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   const { data: listing, isLoading, refetch, isRefetching, error } = useQuery({
     queryKey: ['listing', listingId],
@@ -51,25 +53,13 @@ export default function ListingDetailScreen() {
   const deleteMutation = useMutation({
     mutationFn: () => mobileApi.deleteListing(listingId),
     onSuccess: () => {
+      setConfirmDeleteOpen(false);
       queryClient.removeQueries({ queryKey: ['listing', listingId] });
       queryClient.invalidateQueries({ queryKey: ['listings'] });
-      Alert.alert('Deleted', 'Listing removed.', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
+      router.back();
     },
     onError: (err) => Alert.alert('Delete failed', err.message || 'Could not delete listing'),
   });
-
-  const confirmDelete = () => {
-    Alert.alert(
-      'Delete listing',
-      `Delete “${listing?.operator || 'this listing'} · ${listing?.micro || ''}”? This cannot be undone.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: () => deleteMutation.mutate() },
-      ],
-    );
-  };
 
   const inProposal = listing ? isInProposal(listing.id || listing._id) : false;
   const gallery = listing ? allGalleryPhotos(listing) : [];
@@ -205,16 +195,12 @@ export default function ListingDetailScreen() {
             <Pressable
               style={[styles.btn, styles.btnDanger, deleteMutation.isPending && styles.btnOff]}
               disabled={deleteMutation.isPending}
-              onPress={confirmDelete}
+              onPress={() => setConfirmDeleteOpen(true)}
             >
-              {deleteMutation.isPending ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <>
-                  <Ionicons name="trash-outline" size={20} color="#fff" />
-                  <Text style={styles.btnPrimaryText}>Delete listing</Text>
-                </>
-              )}
+              <>
+                <Ionicons name="trash-outline" size={20} color="#fff" />
+                <Text style={styles.btnPrimaryText}>Delete listing</Text>
+              </>
             </Pressable>
           ) : null}
         </View>
@@ -226,6 +212,16 @@ export default function ListingDetailScreen() {
         initialIndex={galleryIndex}
         title={`${listing.operator} · ${listing.micro}`}
         onClose={() => setGalleryOpen(false)}
+      />
+
+      <ConfirmDialog
+        visible={confirmDeleteOpen}
+        title="Delete listing"
+        message={`Delete “${listing.operator} · ${listing.micro}”? This cannot be undone.`}
+        confirmLabel="Delete"
+        busy={deleteMutation.isPending}
+        onCancel={() => { if (!deleteMutation.isPending) setConfirmDeleteOpen(false); }}
+        onConfirm={() => deleteMutation.mutate()}
       />
     </>
   );

@@ -15,6 +15,7 @@ import { formatDate, isOverdue, leadSubtitle } from '../../../lib/format';
 import { STAGES, STAGE_LABEL } from '../../../constants/leads';
 import StageBadge from '../../../components/ui/StageBadge';
 import LoadingScreen from '../../../components/ui/LoadingScreen';
+import ConfirmDialog from '../../../components/ui/ConfirmDialog';
 import { colors } from '../../../constants/theme';
 import { openWhatsApp } from '../../../lib/whatsapp';
 import { initials } from '@spacehaat/utils';
@@ -27,6 +28,7 @@ export default function LeadDetailScreen() {
   const queryClient = useQueryClient();
   const insets = useSafeAreaInsets();
   const [noteText, setNoteText] = useState('');
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   const { data: lead, isLoading, refetch, isRefetching, error } = useQuery({
     queryKey: ['lead', leadId],
@@ -37,26 +39,14 @@ export default function LeadDetailScreen() {
   const deleteMutation = useMutation({
     mutationFn: () => mobileApi.deleteLead(leadId),
     onSuccess: () => {
+      setConfirmDeleteOpen(false);
       queryClient.removeQueries({ queryKey: ['lead', leadId] });
       queryClient.invalidateQueries({ queryKey: ['leads'] });
-      Alert.alert('Deleted', 'Lead removed.', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
+      router.back();
     },
     onError: (err) => Alert.alert('Delete failed', err.message || 'Could not delete lead'),
   });
 
-  const confirmDelete = () => {
-    const label = lead?.name || lead?.company || 'this lead';
-    Alert.alert(
-      'Delete lead',
-      `Delete “${label}”? This cannot be undone.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: () => deleteMutation.mutate() },
-      ],
-    );
-  };
   const stageMutation = useMutation({
     mutationFn: async (stage) => {
       const result = await runOfflineAction({ type: 'UPDATE_LEAD_STAGE', leadId, stage });
@@ -144,13 +134,11 @@ export default function LeadDetailScreen() {
           </View>
           {admin ? (
             <Pressable
-              style={[styles.deleteIconBtn, deleteMutation.isPending && styles.noteBtnOff]}
-              onPress={confirmDelete}
+              style={styles.deleteIconBtn}
+              onPress={() => setConfirmDeleteOpen(true)}
               disabled={deleteMutation.isPending}
             >
-              {deleteMutation.isPending
-                ? <ActivityIndicator color={colors.danger} />
-                : <Ionicons name="trash-outline" size={20} color={colors.danger} />}
+              <Ionicons name="trash-outline" size={20} color={colors.danger} />
             </Pressable>
           ) : null}
         </View>
@@ -291,6 +279,16 @@ export default function LeadDetailScreen() {
           )}
         </Pressable>
       </View>
+
+      <ConfirmDialog
+        visible={confirmDeleteOpen}
+        title="Delete lead"
+        message={`Delete “${lead.name || lead.company || 'this lead'}”? This cannot be undone.`}
+        confirmLabel="Delete"
+        busy={deleteMutation.isPending}
+        onCancel={() => { if (!deleteMutation.isPending) setConfirmDeleteOpen(false); }}
+        onConfirm={() => deleteMutation.mutate()}
+      />
     </KeyboardAvoidingView>
   );
 }
