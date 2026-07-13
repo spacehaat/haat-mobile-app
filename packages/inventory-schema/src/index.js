@@ -7,7 +7,7 @@ export const AMENITIES = [
 
 export const BUILDING_TYPES = ['IT park', 'Standalone', 'Mixed-use'];
 
-export const LISTING_CITIES = ['Bangalore', 'Mumbai', 'Delhi NCR', 'Hyderabad', 'Pune', 'Chennai'];
+export const LISTING_CITIES = ['Gurugram', 'Noida', 'Delhi', 'Bangalore', 'Mumbai', 'Pune', 'Hyderabad', 'Ahmedabad', 'Jaipur', 'Chennai', 'Lucknow', 'Indore'];
 
 /** Six-step wizard schema — keep in sync with web InventoryWizard. */
 export const INV_SCHEMA = [
@@ -166,9 +166,7 @@ function coerceFieldValue(field, raw) {
 /** Convert wizard draft to API create/update payload. */
 export function draftToListingPayload(draft, schema = INV_SCHEMA) {
   const payload = {
-    tier: draft['core.tier'] || 'Standard',
     amenities: [],
-    avail: 'Available now',
     source: 'manual',
   };
   const profile = {};
@@ -187,6 +185,7 @@ export function draftToListingPayload(draft, schema = INV_SCHEMA) {
     }
   }
 
+  if (draft['core.tier']) payload.tier = draft['core.tier'];
   if (Object.keys(profile).length) payload.profile = profile;
   return payload;
 }
