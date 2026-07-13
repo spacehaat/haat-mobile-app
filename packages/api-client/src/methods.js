@@ -95,6 +95,11 @@ export function createApiMethods(request) {
       return data.item;
     },
 
+    async deleteListing(id) {
+      const data = await request(`/api/v1/listings/${id}`, { method: 'DELETE' });
+      return data;
+    },
+
     async getProposalDraft() {
       return request('/api/v1/proposals/draft');
     },
@@ -247,6 +252,10 @@ export function createApiMethods(request) {
       return data.item;
     },
 
+    async deleteLead(id) {
+      return request(`/api/v1/leads/${id}`, { method: 'DELETE' });
+    },
+
     async addLeadNote(id, text) {
       const data = await request(`/api/v1/leads/${id}/notes`, { method: 'POST', body: { text } });
       return data.item;
@@ -308,6 +317,7 @@ export function bindLegacyApiExports(request) {
     apiCreateListing: (payload) => m.createListing(payload),
     apiUpdateListing: (id, payload) => m.updateListing(id, payload),
     apiVerifyListing: (id) => m.verifyListing(id),
+    apiDeleteListing: (id) => m.deleteListing(id),
     apiGetProposalDraft: () => m.getProposalDraft(),
     apiUpdateProposalDraft: (payload) => m.updateProposalDraft(payload),
     apiSendProposal: (channel, sentBy, render, title, leadId) => m.sendProposal(channel, sentBy, render, title, leadId),
@@ -330,6 +340,7 @@ export function bindLegacyApiExports(request) {
     apiParseLead: (enquiry) => m.parseLead(enquiry),
     apiCreateLeadFromMatch: (payload) => m.createLeadFromMatch(payload),
     apiUpdateLead: (id, payload) => m.updateLead(id, payload),
+    apiDeleteLead: (id) => m.deleteLead(id),
     apiAddLeadNote: (id, text) => m.addLeadNote(id, text),
     apiListRecentClients: () => m.listRecentClients(),
     apiUploadImages: (files, listingId) => m.uploadImages(files, listingId),

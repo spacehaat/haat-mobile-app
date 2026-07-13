@@ -9,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { mobileApi } from '../../../lib/api';
 import { useAuth } from '../../../context/AuthContext';
 import { useProposal } from '../../../context/ProposalContext';
-import { canVerifyListings, canManageInventory, canSeeProposalBuilder } from '../../../lib/access';
+import { canVerifyListings, canManageInventory, canSeeProposalBuilder, isAdmin } from '../../../lib/access';
 import FreshBadge from '../../../components/ui/FreshBadge';
 import LoadingScreen from '../../../components/ui/LoadingScreen';
 import ListingDetailSections from '../../../components/ui/ListingDetailSections';
@@ -26,6 +26,7 @@ export default function ListingDetailScreen() {
   const queryClient = useQueryClient();
   const canVerify = canVerifyListings(user);
   const canEdit = canManageInventory(user);
+  const admin = isAdmin(user);
   const showProposal = canSeeProposalBuilder(user);
   const { isInProposal, addToProposal, removeFromProposal } = useProposal();
   const [galleryOpen, setGalleryOpen] = useState(false);
@@ -46,6 +47,29 @@ export default function ListingDetailScreen() {
     },
     onError: (err) => Alert.alert('Verify failed', err.message),
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => mobileApi.deleteListing(listingId),
+    onSuccess: () => {
+      queryClient.removeQueries({ queryKey: ['listing', listingId] });
+      queryClient.invalidateQueries({ queryKey: ['listings'] });
+      Alert.alert('Deleted', 'Listing removed.', [
+        { text: 'OK', onPress: () => router.back() },
+      ]);
+    },
+    onError: (err) => Alert.alert('Delete failed', err.message || 'Could not delete listing'),
+  });
+
+  const confirmDelete = () => {
+    Alert.alert(
+      'Delete listing',
+      `Delete “${listing?.operator || 'this listing'} · ${listing?.micro || ''}”? This cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => deleteMutation.mutate() },
+      ],
+    );
+  };
 
   const inProposal = listing ? isInProposal(listing.id || listing._id) : false;
   const gallery = listing ? allGalleryPhotos(listing) : [];
@@ -176,6 +200,23 @@ export default function ListingDetailScreen() {
               )}
             </Pressable>
           ) : null}
+
+          {admin ? (
+            <Pressable
+              style={[styles.btn, styles.btnDanger, deleteMutation.isPending && styles.btnOff]}
+              disabled={deleteMutation.isPending}
+              onPress={confirmDelete}
+            >
+              {deleteMutation.isPending ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="trash-outline" size={20} color="#fff" />
+                  <Text style={styles.btnPrimaryText}>Delete listing</Text>
+                </>
+              )}
+            </Pressable>
+          ) : null}
         </View>
       </ScrollView>
 
@@ -216,6 +257,7 @@ const styles = StyleSheet.create({
   btnSuccess: { backgroundColor: colors.success, borderColor: colors.success },
   btnVerify: { backgroundColor: colors.success, borderColor: colors.success },
   btnEdit: { backgroundColor: colors.ink, borderColor: colors.ink },
+  btnDanger: { backgroundColor: colors.danger, borderColor: colors.danger },
   btnPrimaryText: { color: '#fff', fontWeight: '700', fontSize: 15 },
   btnText: { color: colors.ink, fontWeight: '700', fontSize: 15 },
   btnOff: { opacity: 0.6 },

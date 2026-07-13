@@ -3,11 +3,13 @@ import {
   View, Text, ScrollView, Pressable, StyleSheet, Linking, TextInput,
   ActivityIndicator, RefreshControl, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { mobileApi } from '../../../lib/api';
+import { useAuth } from '../../../context/AuthContext';
+import { isAdmin } from '../../../lib/access';
 import { runOfflineAction } from '../../../lib/offlineQueue';
 import { formatDate, isOverdue, leadSubtitle } from '../../../lib/format';
 import { STAGES, STAGE_LABEL } from '../../../constants/leads';
@@ -20,6 +22,8 @@ import { initials } from '@spacehaat/utils';
 export default function LeadDetailScreen() {
   const { id } = useLocalSearchParams();
   const leadId = Array.isArray(id) ? id[0] : id;
+  const { user } = useAuth();
+  const admin = isAdmin(user);
   const queryClient = useQueryClient();
   const insets = useSafeAreaInsets();
   const [noteText, setNoteText] = useState('');
@@ -30,6 +34,29 @@ export default function LeadDetailScreen() {
     enabled: Boolean(leadId),
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: () => mobileApi.deleteLead(leadId),
+    onSuccess: () => {
+      queryClient.removeQueries({ queryKey: ['lead', leadId] });
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      Alert.alert('Deleted', 'Lead removed.', [
+        { text: 'OK', onPress: () => router.back() },
+      ]);
+    },
+    onError: (err) => Alert.alert('Delete failed', err.message || 'Could not delete lead'),
+  });
+
+  const confirmDelete = () => {
+    const label = lead?.name || lead?.company || 'this lead';
+    Alert.alert(
+      'Delete lead',
+      `Delete “${label}”? This cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => deleteMutation.mutate() },
+      ],
+    );
+  };
   const stageMutation = useMutation({
     mutationFn: async (stage) => {
       const result = await runOfflineAction({ type: 'UPDATE_LEAD_STAGE', leadId, stage });
@@ -115,6 +142,17 @@ export default function LeadDetailScreen() {
             {lead.company && lead.name ? <Text style={styles.company}>{lead.company}</Text> : null}
             {leadSubtitle(lead) ? <Text style={styles.sub}>{leadSubtitle(lead)}</Text> : null}
           </View>
+          {admin ? (
+            <Pressable
+              style={[styles.deleteIconBtn, deleteMutation.isPending && styles.noteBtnOff]}
+              onPress={confirmDelete}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending
+                ? <ActivityIndicator color={colors.danger} />
+                : <Ionicons name="trash-outline" size={20} color={colors.danger} />}
+            </Pressable>
+          ) : null}
         </View>
 
         <View style={styles.badges}>
@@ -270,6 +308,10 @@ const styles = StyleSheet.create({
   },
   avatarText: { color: colors.brand, fontWeight: '800', fontSize: 17 },
   heroBody: { flex: 1 },
+  deleteIconBtn: {
+    width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#fbe9e9', borderWidth: 1, borderColor: '#f5c4c4',
+  },
   title: { fontSize: 22, fontWeight: '800', color: colors.ink },
   company: { fontSize: 14, fontWeight: '600', color: colors.muted, marginTop: 2 },
   sub: { fontSize: 13, color: colors.muted, marginTop: 4 },
