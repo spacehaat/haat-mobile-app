@@ -13,7 +13,7 @@ import {
   mobileLogout,
   setMobileUnauthorizedHandler,
 } from '../lib/api';
-import { registerForPushNotifications, unregisterPushNotifications } from '../lib/notifications';
+import { startPushRegistrationWatcher } from '../lib/notifications';
 
 const AuthContext = createContext(null);
 
@@ -37,7 +37,7 @@ export function AuthProvider({ children }) {
   }, [applySession]);
 
   const signOut = useCallback(async () => {
-    await unregisterPushNotifications(pushTokenRef.current);
+    // Keep the Expo push token on the server; next login reassigns it to the new user.
     pushTokenRef.current = null;
     await mobileLogout();
     setUser(null);
@@ -58,9 +58,6 @@ export function AuthProvider({ children }) {
     }
     const activeUser = session?.user;
     if (!activeUser) throw new Error('Could not load user profile');
-    registerForPushNotifications()
-      .then((token) => { pushTokenRef.current = token; })
-      .catch(() => {});
     router.replace(defaultTabPathForUser(activeUser));
     return activeUser;
   }, [applySession]);
@@ -79,16 +76,25 @@ export function AuthProvider({ children }) {
         if (!token) return;
         const data = await mobileApi.getMe();
         applySession(data);
-        registerForPushNotifications()
-          .then((t) => { pushTokenRef.current = t; })
-          .catch(() => {});
-      } catch {
-        await clearMobileTokens();
+      } catch (err) {
+        const isAuthError = err?.status === 401 || err?.code === 'UNAUTHENTICATED';
+        if (isAuthError) {
+          await clearMobileTokens();
+        }
       } finally {
         setBooting(false);
       }
     })();
   }, [applySession]);
+
+  // Register / refresh push token whenever a user session is active.
+  useEffect(() => {
+    if (!user) return undefined;
+
+    return startPushRegistrationWatcher((token) => {
+      pushTokenRef.current = token;
+    });
+  }, [user]);
 
   const can = useCallback((permission) => checkPermission(user, permission), [user]);
   const canSeeScreen = useCallback((screen) => checkScreen(user, screen), [user]);

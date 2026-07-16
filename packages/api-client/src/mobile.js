@@ -1,6 +1,9 @@
 import { createApiClient } from './client.js';
 import { createApiMethods } from './methods.js';
 
+const AUTH_PATHS_WITHOUT_REFRESH = ['/auth/login', '/auth/refresh'];
+const AUTH_PATHS_WITHOUT_LOGOUT = ['/auth/login', '/auth/refresh'];
+
 /**
  * Bearer-token API client for Expo / React Native.
  * @param {Object} options
@@ -24,34 +27,59 @@ export function createMobileApi(options) {
   const { request: rawRequest } = createApiClient({
     baseUrl,
     getAccessToken,
-    onUnauthorized,
+    // Refresh runs in this wrapper before logout; don't clear session on first 401.
+    onUnauthorized: null,
   });
 
-  async function request(path, opts) {
+  async function request(path, opts, retried = false) {
     try {
       return await rawRequest(path, opts);
     } catch (err) {
-      if (err.status !== 401 || !getRefreshToken || !setTokens || path.endsWith('/auth/refresh')) {
+      const canRefresh = (
+        err.status === 401
+        && !retried
+        && getRefreshToken
+        && setTokens
+        && !AUTH_PATHS_WITHOUT_REFRESH.some((suffix) => path.endsWith(suffix))
+      );
+
+      if (!canRefresh) {
+        if (
+          err.status === 401
+          && onUnauthorized
+          && !AUTH_PATHS_WITHOUT_LOGOUT.some((suffix) => path.endsWith(suffix))
+        ) {
+          onUnauthorized();
+        }
         throw err;
       }
 
-      if (!refreshPromise) {
-        refreshPromise = (async () => {
-          const refreshToken = await getRefreshToken();
-          if (!refreshToken) throw err;
-          const data = await rawRequest('/api/v1/auth/refresh', {
-            method: 'POST',
-            body: { refreshToken },
+      try {
+        if (!refreshPromise) {
+          refreshPromise = (async () => {
+            const refreshToken = await getRefreshToken();
+            if (!refreshToken) {
+              const noRefreshErr = new Error('No refresh token');
+              noRefreshErr.status = 401;
+              throw noRefreshErr;
+            }
+            const data = await rawRequest('/api/v1/auth/refresh', {
+              method: 'POST',
+              body: { refreshToken },
+            });
+            await setTokens(data.accessToken, data.refreshToken ?? refreshToken);
+            return data.accessToken;
+          })().finally(() => {
+            refreshPromise = null;
           });
-          await setTokens(data.accessToken, data.refreshToken ?? refreshToken);
-          return data.accessToken;
-        })().finally(() => {
-          refreshPromise = null;
-        });
-      }
+        }
 
-      await refreshPromise;
-      return rawRequest(path, opts);
+        await refreshPromise;
+        return request(path, opts, true);
+      } catch (refreshErr) {
+        if (onUnauthorized) onUnauthorized();
+        throw refreshErr.status ? refreshErr : err;
+      }
     }
   }
 
