@@ -9,6 +9,7 @@ import { BiometricProvider } from '../context/BiometricContext';
 import NotificationRegistrar from '../components/NotificationRegistrar';
 import OfflineBanner from '../components/OfflineBanner';
 import { initMonitoring } from '../lib/monitoring';
+import { checkAndApplyAppUpdate } from '../lib/appUpdates';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -22,6 +23,7 @@ const queryClient = new QueryClient({
 export default function RootLayout() {
   useEffect(() => {
     initMonitoring();
+    void checkAndApplyAppUpdate();
   }, []);
 
   return (
