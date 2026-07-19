@@ -92,12 +92,15 @@ export const INV_SCHEMA = [
     { p: 'contactsMedia.carParkingSpaces', l: 'Car parking spaces', t: 'num' },
     { p: 'contactsMedia.twoWheelerSpaces', l: '2-wheeler parking spaces', t: 'num' },
     { p: 'core.amenities', l: 'Extra amenities', t: 'chips', choices: () => AMENITIES },
+  ]},
+  { id: 'G', title: 'Media & Gallery', tag: 'static', fields: [
     { p: 'images', l: 'Workspace photos', t: 'images' },
+    { div: 'Links & documents' },
     { p: 'contactsMedia.brochure', l: 'Brochure / proposal PDF', ph: 'file name or link' },
-    { p: 'contactsMedia.website', l: 'Website link' },
-    { p: 'contactsMedia.virtualTour', l: 'Virtual tour (YouTube)' },
-    { p: 'contactsMedia.instagram', l: 'Instagram link' },
-    { p: 'contactsMedia.linkedin', l: 'LinkedIn link' },
+    { p: 'contactsMedia.website', l: 'Website link', ph: 'https://…' },
+    { p: 'contactsMedia.virtualTour', l: 'Virtual tour (YouTube)', ph: 'YouTube URL' },
+    { p: 'contactsMedia.instagram', l: 'Instagram link', ph: 'https://instagram.com/…' },
+    { p: 'contactsMedia.linkedin', l: 'LinkedIn link', ph: 'https://linkedin.com/…' },
   ]},
 ];
 
@@ -134,7 +137,9 @@ export function readListingPath(listing, path) {
     return listing[key];
   }
   if (path === 'images') {
-    const imgs = listing.images || [];
+    const imgs = listing.images?.length
+      ? listing.images
+      : (listing.profile?.contactsMedia?.gallery || []);
     if (!imgs.length) return undefined;
     const meta = listing.photoMeta || [];
     return imgs.map((src, i) => ({

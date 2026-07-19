@@ -1,24 +1,18 @@
 import { useMemo, useState } from 'react';
 import {
   View, Text, ScrollView, TextInput, Pressable, StyleSheet,
-  ActivityIndicator, Switch, KeyboardAvoidingView, Platform, Image,
+  ActivityIndicator, Switch, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
-
-const IMAGE_MEDIA_TYPES = (() => {
-  if (ImagePicker.MediaType?.Images) return ImagePicker.MediaType.Images;
-  if (ImagePicker.MediaTypeOptions?.Images) return ImagePicker.MediaTypeOptions.Images;
-  return 'images';
-})();
 import {
   INV_SCHEMA, AMENITIES, schemaForUser, listingToDraft,
   draftToListingPayload, validateDraft,
 } from '@spacehaat/inventory-schema';
 import { colors } from '../../constants/theme';
 import { mobileApi } from '../../lib/api';
+import InventoryMediaSection from './InventoryMediaSection';
 
-async function resolveDraftImages(draftPhotos, listingId) {
+export async function resolveDraftImages(draftPhotos, listingId) {
   const photos = Array.isArray(draftPhotos) ? draftPhotos.filter((p) => p?.uri || p?.src) : [];
   if (!photos.length) return { images: [], photoMeta: [] };
 
@@ -48,71 +42,7 @@ async function resolveDraftImages(draftPhotos, listingId) {
   return { images, photoMeta };
 }
 
-function ImagesField({ value, onChange }) {
-  const photos = Array.isArray(value) ? value : [];
-
-  const pickImages = async () => {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) return;
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: IMAGE_MEDIA_TYPES,
-      allowsMultipleSelection: true,
-      quality: 0.85,
-    });
-    if (result.canceled || !result.assets?.length) return;
-
-    onChange([
-      ...photos,
-      ...result.assets.map((asset) => ({
-        uri: asset.uri,
-        local: true,
-        fileName: asset.fileName,
-        mimeType: asset.mimeType,
-        label: '',
-        price: '',
-      })),
-    ]);
-  };
-
-  const removeAt = (index) => onChange(photos.filter((_, i) => i !== index));
-  const setCover = (index) => {
-    const next = [...photos];
-    const [item] = next.splice(index, 1);
-    next.unshift(item);
-    onChange(next);
-  };
-
-  return (
-    <View style={styles.field}>
-      <Text style={styles.label}>Workspace photos</Text>
-      <View style={styles.photoGrid}>
-        {photos.map((p, i) => (
-          <View key={`${p.uri || p.src}-${i}`} style={styles.photoCard}>
-            <Image source={{ uri: p.uri || p.src }} style={styles.photoThumb} />
-            {i === 0 ? (
-              <Text style={styles.coverTag}>Cover</Text>
-            ) : (
-              <Pressable style={styles.coverBtn} onPress={() => setCover(i)}>
-                <Ionicons name="star-outline" size={14} color="#fff" />
-              </Pressable>
-            )}
-            <Pressable style={styles.removeBtn} onPress={() => removeAt(i)}>
-              <Ionicons name="close" size={14} color="#fff" />
-            </Pressable>
-          </View>
-        ))}
-      </View>
-      <Pressable style={styles.addPhotosBtn} onPress={pickImages}>
-        <Ionicons name="cloud-upload-outline" size={20} color={colors.brand} />
-        <Text style={styles.addPhotosText}>Add photos</Text>
-        <Text style={styles.addPhotosHint}>JPG / PNG · first photo is cover</Text>
-      </Pressable>
-    </View>
-  );
-}
-
-function WizardField({ field, value, onChange }) {
+function WizardField({ field, value, onChange, uploadingImages }) {
   if (field.div) {
     return (
       <View style={styles.dividerRow}>
@@ -129,7 +59,13 @@ function WizardField({ field, value, onChange }) {
   );
 
   if (field.t === 'images') {
-    return <ImagesField value={value} onChange={onChange} />;
+    return (
+      <InventoryMediaSection
+        value={value}
+        onChange={onChange}
+        uploading={uploadingImages}
+      />
+    );
   }
 
   if (field.t === 'toggle') {
@@ -217,6 +153,7 @@ function WizardField({ field, value, onChange }) {
         onChangeText={onChange}
         placeholder={field.ph || ''}
         keyboardType={keyboardType}
+        autoCapitalize={field.ph?.includes('http') ? 'none' : 'sentences'}
       />
       {field.suf ? <Text style={styles.suffix}>{field.suf}</Text> : null}
     </View>
@@ -234,10 +171,12 @@ export default function InventoryWizard({
   const [step, setStep] = useState(0);
   const [draft, setDraft] = useState(() => listingToDraft(listing));
   const [error, setError] = useState('');
+  const [uploadingImages, setUploadingImages] = useState(false);
 
   const group = groups[step];
   const pct = groups.length ? Math.round(((step + 1) / groups.length) * 100) : 0;
   const isEdit = Boolean(listing?.id || listing?._id);
+  const isMediaStep = group?.id === 'G';
 
   const setPath = (path, val) => setDraft((prev) => ({ ...prev, [path]: val }));
 
@@ -249,14 +188,26 @@ export default function InventoryWizard({
     }
     setError('');
     try {
+      setUploadingImages(true);
       const payload = draftToListingPayload(draft, groups);
       const listingId = listing?.id || listing?._id;
       const { images, photoMeta } = await resolveDraftImages(draft.images, listingId);
       payload.images = images;
       payload.photoMeta = photoMeta;
+      if (images.length) {
+        payload.profile = {
+          ...(payload.profile || {}),
+          contactsMedia: {
+            ...(payload.profile?.contactsMedia || {}),
+            gallery: images,
+          },
+        };
+      }
       onSave?.(payload);
     } catch (err) {
       setError(err?.message || 'Failed to upload photos');
+    } finally {
+      setUploadingImages(false);
     }
   };
 
@@ -273,7 +224,9 @@ export default function InventoryWizard({
             style={[styles.stepChip, i === step && styles.stepChipOn, i < step && styles.stepChipDone]}
             onPress={() => setStep(i)}
           >
-            <Text style={[styles.stepChipText, i === step && styles.stepChipTextOn]}>{g.id} · {g.title.split(' ')[0]}</Text>
+            <Text style={[styles.stepChipText, i === step && styles.stepChipTextOn]}>
+              {g.id} · {g.id === 'G' ? 'Media' : g.title.split(' ')[0]}
+            </Text>
           </Pressable>
         ))}
       </ScrollView>
@@ -284,6 +237,7 @@ export default function InventoryWizard({
           <Text style={styles.stepSub}>
             Step {step + 1} of {groups.length}
             {group?.tag === 'internal' ? ' · Internal only' : ''}
+            {isMediaStep ? ' · Upload, reorder, and label photos' : ''}
           </Text>
         </View>
 
@@ -293,6 +247,7 @@ export default function InventoryWizard({
             field={field}
             value={field.p ? draft[field.p] : undefined}
             onChange={(val) => field.p && setPath(field.p, val)}
+            uploadingImages={uploadingImages || saving}
           />
         ))}
 
@@ -300,21 +255,25 @@ export default function InventoryWizard({
       </ScrollView>
 
       <View style={styles.footer}>
-        <Pressable style={styles.cancelBtn} onPress={onCancel} disabled={saving}>
+        <Pressable style={styles.cancelBtn} onPress={onCancel} disabled={saving || uploadingImages}>
           <Text style={styles.cancelText}>Cancel</Text>
         </Pressable>
         {step > 0 ? (
-          <Pressable style={styles.backBtn} onPress={() => setStep((s) => s - 1)} disabled={saving}>
+          <Pressable style={styles.backBtn} onPress={() => setStep((s) => s - 1)} disabled={saving || uploadingImages}>
             <Text style={styles.backText}>Back</Text>
           </Pressable>
         ) : null}
         {step < groups.length - 1 ? (
-          <Pressable style={styles.nextBtn} onPress={() => setStep((s) => s + 1)} disabled={saving}>
+          <Pressable style={styles.nextBtn} onPress={() => setStep((s) => s + 1)} disabled={saving || uploadingImages}>
             <Text style={styles.nextText}>Continue</Text>
           </Pressable>
         ) : (
-          <Pressable style={[styles.saveBtn, saving && styles.btnOff]} onPress={handleSave} disabled={saving}>
-            {saving ? <ActivityIndicator color="#fff" /> : (
+          <Pressable
+            style={[styles.saveBtn, (saving || uploadingImages) && styles.btnOff]}
+            onPress={handleSave}
+            disabled={saving || uploadingImages}
+          >
+            {(saving || uploadingImages) ? <ActivityIndicator color="#fff" /> : (
               <>
                 <Ionicons name="checkmark-circle-outline" size={18} color="#fff" />
                 <Text style={styles.saveText}>{isEdit ? 'Save changes' : 'Publish'}</Text>
@@ -366,30 +325,6 @@ const styles = StyleSheet.create({
   divider: { fontSize: 11, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase', color: colors.faint },
   liveTag: { fontSize: 10, fontWeight: '700', color: colors.brand, backgroundColor: colors.brandSoft, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },
   error: { color: colors.danger, fontSize: 13, marginTop: 8 },
-  photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 10 },
-  photoCard: {
-    width: 104, height: 78, borderRadius: 10, overflow: 'hidden',
-    backgroundColor: colors.border, position: 'relative',
-  },
-  photoThumb: { width: '100%', height: '100%' },
-  coverTag: {
-    position: 'absolute', left: 4, bottom: 4, fontSize: 9, fontWeight: '700',
-    color: '#fff', backgroundColor: colors.brand, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4,
-  },
-  coverBtn: {
-    position: 'absolute', left: 4, top: 4, width: 22, height: 22, borderRadius: 6,
-    backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center',
-  },
-  removeBtn: {
-    position: 'absolute', right: 4, top: 4, width: 22, height: 22, borderRadius: 6,
-    backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center',
-  },
-  addPhotosBtn: {
-    borderWidth: 1.5, borderStyle: 'dashed', borderColor: colors.border, borderRadius: 12,
-    paddingVertical: 18, alignItems: 'center', gap: 4, backgroundColor: colors.surface,
-  },
-  addPhotosText: { fontSize: 14, fontWeight: '700', color: colors.ink },
-  addPhotosHint: { fontSize: 11, color: colors.muted },
   footer: {
     flexDirection: 'row', gap: 8, padding: 16, borderTopWidth: 1, borderTopColor: colors.border,
     backgroundColor: colors.surface,

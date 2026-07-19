@@ -91,7 +91,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow Spacehaat to attach workspace photos to listings."
+          "photosPermission": "Allow Spacehaat to attach workspace photos to listings.",
+          "cameraPermission": "Allow Spacehaat to take workspace photos for listings."
         }
       ]
     ],
