@@ -9,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { mobileApi } from '../../../lib/api';
 import { useAuth } from '../../../context/AuthContext';
 import { useProposal } from '../../../context/ProposalContext';
-import { canVerifyListings, canManageInventory, canSeeProposalBuilder, isAdmin } from '../../../lib/access';
+import { canVerifyListings, canManageInventory, canSeeProposalBuilder, isAdmin, defaultTabPathForUser } from '../../../lib/access';
 import FreshBadge from '../../../components/ui/FreshBadge';
 import LoadingScreen from '../../../components/ui/LoadingScreen';
 import ListingDetailSections from '../../../components/ui/ListingDetailSections';
@@ -19,6 +19,7 @@ import ConfirmDialog from '../../../components/ui/ConfirmDialog';
 import { coverImg, allGalleryPhotos } from '../../../lib/listingHelpers';
 import { colors } from '../../../constants/theme';
 import { inr } from '@spacehaat/utils';
+import NewListingScreen from '../../../components/inventory/NewListingScreen';
 
 export default function ListingDetailScreen() {
   const { id } = useLocalSearchParams();
@@ -94,8 +95,13 @@ export default function ListingDetailScreen() {
     }
   };
 
-  if (reservedRoute) {
-    return <Redirect href={listingId === 'new' ? '/(tabs)/browser/new' : '/(tabs)/browser'} />;
+  if (listingId === 'new') {
+    if (!canEdit) return <Redirect href={defaultTabPathForUser(user)} />;
+    return <NewListingScreen />;
+  }
+
+  if (listingId === 'edit') {
+    return <Redirect href="/(tabs)/browser" />;
   }
 
   if (isLoading) return <LoadingScreen label="Loading listing…" />;

@@ -5,6 +5,12 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+
+const IMAGE_MEDIA_TYPES = (() => {
+  if (ImagePicker.MediaType?.Images) return ImagePicker.MediaType.Images;
+  if (ImagePicker.MediaTypeOptions?.Images) return ImagePicker.MediaTypeOptions.Images;
+  return 'images';
+})();
 import {
   INV_SCHEMA, AMENITIES, schemaForUser, listingToDraft,
   draftToListingPayload, validateDraft,
@@ -50,7 +56,7 @@ function ImagesField({ value, onChange }) {
     if (!perm.granted) return;
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions?.Images ?? ['images'],
+      mediaTypes: IMAGE_MEDIA_TYPES,
       allowsMultipleSelection: true,
       quality: 0.85,
     });

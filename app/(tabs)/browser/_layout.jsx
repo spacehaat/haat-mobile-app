@@ -12,7 +12,13 @@ export default function BrowserLayout() {
       }}
     >
       <Stack.Screen name="index" options={{ title: 'Inventory' }} />
-      <Stack.Screen name="new" options={{ title: 'Add inventory' }} />
+      <Stack.Screen
+        name="new"
+        options={{
+          title: 'Add inventory',
+          animation: 'slide_from_right',
+        }}
+      />
       <Stack.Screen name="[id]" options={{ title: 'Listing' }} />
       <Stack.Screen name="edit/[id]" options={{ title: 'Edit listing' }} />
       <Stack.Screen name="freshness" options={{ title: 'Freshness' }} />

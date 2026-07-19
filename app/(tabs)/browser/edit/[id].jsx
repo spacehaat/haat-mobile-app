@@ -7,6 +7,7 @@ import { useAuth } from '../../../../context/AuthContext';
 import { canManageInventory, defaultTabPathForUser } from '../../../../lib/access';
 import LoadingScreen from '../../../../components/ui/LoadingScreen';
 import InventoryWizard from '../../../../components/inventory/InventoryWizard';
+import NewListingScreen from '../../../../components/inventory/NewListingScreen';
 import { mergeListingUpdate } from '@spacehaat/inventory-schema';
 import { colors } from '../../../../constants/theme';
 
@@ -44,7 +45,7 @@ export default function EditListingScreen() {
     onError: (err) => Alert.alert('Save failed', err.message || 'Could not save listing'),
   });
 
-  if (isNew) return <Redirect href="/(tabs)/browser/new" />;
+  if (isNew) return <NewListingScreen />;
   if (!canEdit) return <Redirect href={defaultTabPathForUser(user)} />;
   if (isLoading) return <LoadingScreen label="Loading listing…" />;
   if (error || !listing) {
