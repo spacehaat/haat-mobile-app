@@ -14,17 +14,20 @@ export const BUILDING_TYPES = ['IT park', 'Standalone', 'Mixed-use'];
 export const MIN_SEAT_TIERS = [0, 10, 25, 50];
 
 export const MAX_PRICE_TIERS = [
+  { value: null, label: 'Any price' },
   { value: 6000, label: '≤ ₹6k' },
   { value: 8000, label: '≤ ₹8k' },
   { value: 10000, label: '≤ ₹10k' },
   { value: 12000, label: '≤ ₹12k' },
   { value: 16000, label: '≤ ₹16k' },
+  { value: 20000, label: '≤ ₹20k' },
+  { value: 25000, label: '≤ ₹25k' },
 ];
 
 export const INITIAL_FILTER = {
   type: 'All',
   fresh: 'All',
-  maxPrice: 16000,
+  maxPrice: null,
   minSeats: 0,
   amenities: [],
   buildingType: 'All',
@@ -39,7 +42,7 @@ export function countActiveFilters(bFilter) {
     (bFilter.type !== 'All' ? 1 : 0)
     + (bFilter.fresh !== 'All' ? 1 : 0)
     + (bFilter.minSeats !== 0 ? 1 : 0)
-    + (bFilter.maxPrice !== INITIAL_FILTER.maxPrice ? 1 : 0)
+    + (bFilter.maxPrice != null ? 1 : 0)
     + (bFilter.buildingType !== 'All' ? 1 : 0)
     + bFilter.amenities.length
     + (bFilter.hotDesk ? 1 : 0)
@@ -55,7 +58,7 @@ export function buildListingFilters(bFilter, city, search, page) {
     type: bFilter.type,
     fresh: bFilter.fresh === 'All' ? undefined : bFilter.fresh,
     minSeats: bFilter.minSeats || undefined,
-    maxPrice: bFilter.maxPrice,
+    maxPrice: bFilter.maxPrice ?? undefined,
     amenities: bFilter.amenities.length ? bFilter.amenities : undefined,
     buildingType: bFilter.buildingType,
     virtualOffice: bFilter.virtualOffice || undefined,

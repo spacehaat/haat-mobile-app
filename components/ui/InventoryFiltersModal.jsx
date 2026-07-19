@@ -85,7 +85,7 @@ export default function InventoryFiltersModal({ visible, filter, onChange, onClo
           <FilterGroup label="Max price / seat">
             <OptRow
               options={MAX_PRICE_TIERS.map(({ value, label }) => [value, label])}
-              value={filter.maxPrice}
+              value={filter.maxPrice ?? null}
               onChange={(v) => set('maxPrice', v)}
             />
           </FilterGroup>
