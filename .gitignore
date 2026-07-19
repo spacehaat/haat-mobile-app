@@ -7,5 +7,9 @@ dist
 *.log
 .DS_Store
 
+# FCM service account private key (never commit)
+*-firebase-adminsdk-*.json
+fcm-service-account.json
+
 # @generated expo-cli
 expo-env.d.ts

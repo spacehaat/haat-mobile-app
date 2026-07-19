@@ -50,7 +50,7 @@ function ImagesField({ value, onChange }) {
     if (!perm.granted) return;
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
+      mediaTypes: ImagePicker.MediaTypeOptions?.Images ?? ['images'],
       allowsMultipleSelection: true,
       quality: 0.85,
     });

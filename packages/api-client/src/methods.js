@@ -205,6 +205,8 @@ export function createApiMethods(request) {
       city = '',
       assignee = '',
       source = '',
+      dateFrom = '',
+      dateTo = '',
     } = {}) {
       const params = new URLSearchParams();
       params.set('page', String(page));
@@ -215,6 +217,8 @@ export function createApiMethods(request) {
       if (city && city !== 'All cities') params.set('city', city);
       if (assignee) params.set('assignee', assignee);
       if (source) params.set('source', source);
+      if (dateFrom) params.set('dateFrom', dateFrom);
+      if (dateTo) params.set('dateTo', dateTo);
       return request(`/api/v1/leads?${params}`);
     },
 

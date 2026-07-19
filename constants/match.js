@@ -5,7 +5,7 @@ We need a private office for 18 people in Koramangala, Bangalore. Budget is arou
 Email: ananya@paynest.in
 Phone: +91 98765 43210`;
 
-export const CITIES = ['Bangalore', 'Mumbai', 'Delhi NCR', 'Hyderabad', 'Pune', 'Chennai'];
+export const CITIES = ['Gurugram', 'Noida', 'Delhi', 'Bangalore', 'Mumbai', 'Pune', 'Hyderabad', 'Ahmedabad', 'Jaipur', 'Chennai', 'Lucknow', 'Indore'];
 
 export const INITIAL_REQ = {
   city: 'Bangalore',

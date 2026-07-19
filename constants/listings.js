@@ -1,4 +1,4 @@
-export const CITIES = ['All cities', 'Bangalore', 'Mumbai', 'Delhi NCR', 'Hyderabad', 'Pune', 'Chennai'];
+export const CITIES = ['All cities', 'Gurugram', 'Noida', 'Delhi', 'Bangalore', 'Mumbai', 'Pune', 'Hyderabad', 'Ahmedabad', 'Jaipur', 'Chennai', 'Lucknow', 'Indore'];
 
 export const FRESHNESS_FILTERS = [
   ['', 'All'],

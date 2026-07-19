@@ -67,7 +67,7 @@ export default function BrowserScreen() {
           ) : null}
           {canEdit ? (
             <Pressable
-              onPress={() => router.push('/(tabs)/browser/edit/new')}
+              onPress={() => router.push('/(tabs)/browser/new')}
               style={styles.headerIcon}
             >
               <Ionicons name="add-circle-outline" size={26} color={colors.brand} />

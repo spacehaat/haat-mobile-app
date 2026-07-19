@@ -1,4 +1,4 @@
-import { Alert } from 'react-native';
+import { Alert, View, StyleSheet } from 'react-native';
 import { Redirect, router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -8,6 +8,7 @@ import { canManageInventory, defaultTabPathForUser } from '../../../../lib/acces
 import LoadingScreen from '../../../../components/ui/LoadingScreen';
 import InventoryWizard from '../../../../components/inventory/InventoryWizard';
 import { mergeListingUpdate } from '@spacehaat/inventory-schema';
+import { colors } from '../../../../constants/theme';
 
 export default function EditListingScreen() {
   const { id } = useLocalSearchParams();
@@ -19,8 +20,8 @@ export default function EditListingScreen() {
   const canEdit = canManageInventory(user);
 
   useEffect(() => {
-    navigation.setOptions({ title: isNew ? 'Add inventory' : 'Edit listing' });
-  }, [navigation, isNew]);
+    navigation.setOptions({ title: 'Edit listing' });
+  }, [navigation]);
 
   const { data: listing, isLoading, error } = useQuery({
     queryKey: ['listing', listingId],
@@ -29,36 +30,40 @@ export default function EditListingScreen() {
   });
 
   const saveMutation = useMutation({
-    mutationFn: async (payload) => {
-      if (isNew) return mobileApi.createListing(payload);
-      return mobileApi.updateListing(listingId, mergeListingUpdate(listing, payload));
-    },
+    mutationFn: async (payload) => mobileApi.updateListing(listingId, mergeListingUpdate(listing, payload)),
     onSuccess: async (saved) => {
       await queryClient.invalidateQueries({ queryKey: ['listings'] });
       const savedId = saved?.id || saved?._id || listingId;
-      if (savedId && savedId !== 'new') {
+      if (savedId) {
         queryClient.setQueryData(['listing', savedId], saved);
       }
-      Alert.alert('Saved', isNew ? 'Listing published.' : 'Listing updated.', [
+      Alert.alert('Saved', 'Listing updated.', [
         { text: 'OK', onPress: () => router.back() },
       ]);
     },
     onError: (err) => Alert.alert('Save failed', err.message || 'Could not save listing'),
   });
 
+  if (isNew) return <Redirect href="/(tabs)/browser/new" />;
   if (!canEdit) return <Redirect href={defaultTabPathForUser(user)} />;
-  if (!isNew && isLoading) return <LoadingScreen label="Loading listing…" />;
-  if (!isNew && (error || !listing)) {
+  if (isLoading) return <LoadingScreen label="Loading listing…" />;
+  if (error || !listing) {
     return <LoadingScreen label={error?.message || 'Listing not found'} />;
   }
 
   return (
-    <InventoryWizard
-      listing={isNew ? null : listing}
-      canSeeInternal={canEdit}
-      saving={saveMutation.isPending}
-      onCancel={() => router.back()}
-      onSave={(payload) => saveMutation.mutate(payload)}
-    />
+    <View style={styles.screen}>
+      <InventoryWizard
+        listing={listing}
+        canSeeInternal={canEdit}
+        saving={saveMutation.isPending}
+        onCancel={() => router.back()}
+        onSave={(payload) => saveMutation.mutate(payload)}
+      />
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: colors.surface2 },
+});

@@ -224,12 +224,12 @@ export default function LeadDetailScreen() {
           {!lead.email && !lead.contact ? <Text style={styles.muted}>No contact details</Text> : null}
         </View>
 
-        {(lead.city || lead.seats || lead.interestedIn?.length) ? (
+        {(lead.city || lead.seats || lead.seatRange || lead.interestedIn?.length) ? (
           <View style={styles.panel}>
             <Text style={styles.panelTitle}>Requirement</Text>
             {lead.interestedIn?.map((t) => <Text key={t} style={styles.reqLine}>• {t}</Text>)}
             {lead.city ? <Text style={styles.reqLine}>📍 {lead.city}{lead.microlocation ? ` · ${lead.microlocation}` : ''}</Text> : null}
-            {lead.seats ? <Text style={styles.reqLine}>{lead.seats} seats</Text> : null}
+            {lead.seatRange ? <Text style={styles.reqLine}>{lead.seatRange} seats</Text> : (lead.seats ? <Text style={styles.reqLine}>{lead.seats} seats</Text> : null)}
           </View>
         ) : null}
 

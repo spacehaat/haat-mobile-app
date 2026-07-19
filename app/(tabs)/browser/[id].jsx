@@ -3,7 +3,7 @@ import {
   Alert, Pressable, ScrollView, StyleSheet, Text, View, ActivityIndicator,
   RefreshControl,
 } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { mobileApi } from '../../../lib/api';
@@ -23,6 +23,8 @@ import { inr } from '@spacehaat/utils';
 export default function ListingDetailScreen() {
   const { id } = useLocalSearchParams();
   const listingId = Array.isArray(id) ? id[0] : id;
+  const reservedRoute = listingId === 'edit' || listingId === 'new';
+
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const canVerify = canVerifyListings(user);
@@ -37,7 +39,7 @@ export default function ListingDetailScreen() {
   const { data: listing, isLoading, refetch, isRefetching, error } = useQuery({
     queryKey: ['listing', listingId],
     queryFn: () => mobileApi.getListing(listingId),
-    enabled: Boolean(listingId),
+    enabled: Boolean(listingId) && !reservedRoute,
   });
 
   const verifyMutation = useMutation({
@@ -91,6 +93,10 @@ export default function ListingDetailScreen() {
       Alert.alert('Proposal', err.message || 'Could not update proposal');
     }
   };
+
+  if (reservedRoute) {
+    return <Redirect href={listingId === 'new' ? '/(tabs)/browser/new' : '/(tabs)/browser'} />;
+  }
 
   if (isLoading) return <LoadingScreen label="Loading listing…" />;
   if (error || !listing) {

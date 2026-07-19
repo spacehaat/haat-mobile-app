@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "904821360437",
+    "project_id": "haat-app-59183",
+    "storage_bucket": "haat-app-59183.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:904821360437:android:0e9cd5800f0db8e5a46e7c",
+        "android_client_info": {
+          "package_name": "in.spacehaat.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC87f5yKxvGSq9dl0vs44z4Cac49g2kd9s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
