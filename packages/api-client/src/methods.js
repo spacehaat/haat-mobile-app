@@ -265,6 +265,14 @@ export function createApiMethods(request) {
       return data.item;
     },
 
+    async setLeadReminder(id, { dueAt, note }) {
+      const data = await request(`/api/v1/leads/${id}/reminder`, {
+        method: 'POST',
+        body: { dueAt, ...(note ? { note } : {}) },
+      });
+      return data.item;
+    },
+
     async listRecentClients() {
       const data = await request('/api/v1/clients/recent');
       return data.items || [];
@@ -346,6 +354,7 @@ export function bindLegacyApiExports(request) {
     apiUpdateLead: (id, payload) => m.updateLead(id, payload),
     apiDeleteLead: (id) => m.deleteLead(id),
     apiAddLeadNote: (id, text) => m.addLeadNote(id, text),
+    apiSetLeadReminder: (id, payload) => m.setLeadReminder(id, payload),
     apiListRecentClients: () => m.listRecentClients(),
     apiUploadImages: (files, listingId) => m.uploadImages(files, listingId),
     methods: m,

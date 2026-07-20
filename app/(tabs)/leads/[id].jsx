@@ -12,6 +12,8 @@ import { useAuth } from '../../../context/AuthContext';
 import { isAdmin } from '../../../lib/access';
 import { runOfflineAction } from '../../../lib/offlineQueue';
 import { formatDate, isOverdue, leadSubtitle } from '../../../lib/format';
+import { formatReminderDateTime, reminderStatus } from '@spacehaat/utils';
+import LeadReminderPanel from '../../../components/leads/LeadReminderPanel';
 import { STAGES, STAGE_LABEL } from '../../../constants/leads';
 import StageBadge from '../../../components/ui/StageBadge';
 import LoadingScreen from '../../../components/ui/LoadingScreen';
@@ -85,6 +87,16 @@ export default function LeadDetailScreen() {
     onError: (err) => Alert.alert('Could not add note', err.message),
   });
 
+  const reminderMutation = useMutation({
+    mutationFn: async ({ dueAt, note }) => mobileApi.setLeadReminder(leadId, { dueAt, note }),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(['lead', leadId], updated);
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      Alert.alert('Reminder set', 'You will get a notification at the scheduled time.');
+    },
+    onError: (err) => Alert.alert('Could not set reminder', err.message || 'Try again'),
+  });
+
   if (isLoading) return <LoadingScreen label="Loading lead…" />;
   if (error || !lead) {
     return (
@@ -152,10 +164,16 @@ export default function LeadDetailScreen() {
           <View style={styles.kpi}><Text style={styles.kpiN}>{lead.listingIds?.length || 0}</Text><Text style={styles.kpiL}>Shortlisted</Text></View>
           <View style={styles.kpi}><Text style={styles.kpiN}>{lead.proposalIds?.length || 0}</Text><Text style={styles.kpiL}>Proposals</Text></View>
           <View style={[styles.kpi, isOverdue(lead.dueAt) && styles.kpiOverdue]}>
-            <Text style={[styles.kpiN, isOverdue(lead.dueAt) && styles.kpiNOverdue]}>{formatDate(lead.dueAt)}</Text>
-            <Text style={styles.kpiL}>{isOverdue(lead.dueAt) ? 'Overdue' : 'Follow-up'}</Text>
+            <Text style={[styles.kpiN, isOverdue(lead.dueAt) && styles.kpiNOverdue]}>{formatReminderDateTime(lead.dueAt)}</Text>
+            <Text style={styles.kpiL}>{reminderStatus(lead.dueAt).label}</Text>
           </View>
         </View>
+
+        <LeadReminderPanel
+          dueAt={lead.dueAt}
+          saving={reminderMutation.isPending}
+          onSave={(payload) => reminderMutation.mutateAsync(payload)}
+        />
 
         <View style={styles.panel}>
           <Text style={styles.panelTitle}>Pipeline</Text>

@@ -7,7 +7,7 @@ export default function NotificationRegistrar() {
     const sub = addNotificationResponseListener((response) => {
       const data = response.notification.request.content.data || {};
       const leadId = data.leadId;
-      if (leadId && (data.type === 'lead_assigned' || data.type === 'lead_created' || data.type === 'follow_up_overdue')) {
+      if (leadId && (data.type === 'lead_assigned' || data.type === 'lead_created' || data.type === 'follow_up_overdue' || data.type === 'lead_reminder')) {
         router.push(`/(tabs)/leads/${leadId}`);
       }
     });
