@@ -61,6 +61,11 @@ export function buildReminderDate(presetId, { customDate, customTime } = {}) {
   return applyTimeToDate(parsed, customTime || defaultCustomTimeString());
 }
 
+export function activeReminderDueAt(lead) {
+  if (!lead?.reminderSetAt) return null;
+  return lead.dueAt || null;
+}
+
 export function formatReminderDateTime(value) {
   if (!value) return 'Not set';
   const d = new Date(value);

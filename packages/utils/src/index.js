@@ -28,6 +28,7 @@ export {
   defaultCustomDateString,
   defaultCustomTimeString,
   buildReminderDate,
+  activeReminderDueAt,
   formatReminderDateTime,
   reminderStatus,
   toLocalDateTimeInputValue,

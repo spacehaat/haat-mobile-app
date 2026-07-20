@@ -12,7 +12,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { isAdmin } from '../../../lib/access';
 import { runOfflineAction } from '../../../lib/offlineQueue';
 import { formatDate, isOverdue, leadSubtitle } from '../../../lib/format';
-import { formatReminderDateTime, reminderStatus } from '@spacehaat/utils';
+import { formatReminderDateTime, reminderStatus, activeReminderDueAt } from '@spacehaat/utils';
 import LeadReminderPanel from '../../../components/leads/LeadReminderPanel';
 import { STAGES, STAGE_LABEL } from '../../../constants/leads';
 import StageBadge from '../../../components/ui/StageBadge';
@@ -125,6 +125,8 @@ export default function LeadDetailScreen() {
     noteMutation.mutate(text);
   };
 
+  const reminderDueAt = activeReminderDueAt(lead);
+
   return (
     <KeyboardAvoidingView
       style={styles.screen}
@@ -163,14 +165,14 @@ export default function LeadDetailScreen() {
         <View style={styles.kpis}>
           <View style={styles.kpi}><Text style={styles.kpiN}>{lead.listingIds?.length || 0}</Text><Text style={styles.kpiL}>Shortlisted</Text></View>
           <View style={styles.kpi}><Text style={styles.kpiN}>{lead.proposalIds?.length || 0}</Text><Text style={styles.kpiL}>Proposals</Text></View>
-          <View style={[styles.kpi, isOverdue(lead.dueAt) && styles.kpiOverdue]}>
-            <Text style={[styles.kpiN, isOverdue(lead.dueAt) && styles.kpiNOverdue]}>{formatReminderDateTime(lead.dueAt)}</Text>
-            <Text style={styles.kpiL}>{reminderStatus(lead.dueAt).label}</Text>
+          <View style={[styles.kpi, isOverdue(reminderDueAt) && styles.kpiOverdue]}>
+            <Text style={[styles.kpiN, isOverdue(reminderDueAt) && styles.kpiNOverdue]}>{formatReminderDateTime(reminderDueAt)}</Text>
+            <Text style={styles.kpiL}>{reminderStatus(reminderDueAt).label}</Text>
           </View>
         </View>
 
         <LeadReminderPanel
-          dueAt={lead.dueAt}
+          dueAt={reminderDueAt}
           saving={reminderMutation.isPending}
           onSave={(payload) => reminderMutation.mutateAsync(payload)}
         />
