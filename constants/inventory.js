@@ -72,5 +72,5 @@ export function buildListingFilters(bFilter, city, search, page) {
 }
 
 export function normalizeListing(l) {
-  return { ...l, id: l._id || l.id, days: l.fresh?.days ?? 0 };
+  return { ...l, id: String(l._id || l.id), days: l.fresh?.days ?? 0 };
 }

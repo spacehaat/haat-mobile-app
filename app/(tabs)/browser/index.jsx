@@ -178,7 +178,7 @@ export default function BrowserScreen() {
             showProposalAction={showProposal}
             inProposal={isInProposal(item.id)}
             onToggleProposal={toggleProposal}
-            onPress={(id) => router.push(`/(tabs)/browser/${id}`)}
+            onPress={(id) => router.push({ pathname: '/(tabs)/browser/[id]', params: { id: String(id) } })}
           />
         )}
         ListHeaderComponent={listHeader}

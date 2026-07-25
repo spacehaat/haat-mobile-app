@@ -1,5 +1,23 @@
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
+import { Pressable } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../../constants/theme';
+
+function HeaderBackButton() {
+  const router = useRouter();
+  return (
+    <Pressable
+      onPress={() => {
+        if (router.canGoBack()) router.back();
+        else router.replace('/(tabs)/browser');
+      }}
+      style={{ marginLeft: 4, padding: 6 }}
+      hitSlop={8}
+    >
+      <Ionicons name="chevron-back" size={24} color={colors.ink} />
+    </Pressable>
+  );
+}
 
 export default function BrowserLayout() {
   return (
@@ -8,6 +26,8 @@ export default function BrowserLayout() {
         headerStyle: { backgroundColor: colors.surface },
         headerTitleStyle: { fontWeight: '700', color: colors.ink },
         headerShadowVisible: false,
+        headerBackVisible: true,
+        gestureEnabled: true,
         contentStyle: { flex: 1, backgroundColor: colors.surface2 },
       }}
     >
@@ -17,11 +37,30 @@ export default function BrowserLayout() {
         options={{
           title: 'Add inventory',
           animation: 'slide_from_right',
+          headerLeft: () => <HeaderBackButton />,
         }}
       />
-      <Stack.Screen name="[id]" options={{ title: 'Listing' }} />
-      <Stack.Screen name="edit/[id]" options={{ title: 'Edit listing' }} />
-      <Stack.Screen name="freshness" options={{ title: 'Freshness' }} />
+      <Stack.Screen
+        name="[id]"
+        options={{
+          title: 'Listing',
+          headerLeft: () => <HeaderBackButton />,
+        }}
+      />
+      <Stack.Screen
+        name="edit/[id]"
+        options={{
+          title: 'Edit listing',
+          headerLeft: () => <HeaderBackButton />,
+        }}
+      />
+      <Stack.Screen
+        name="freshness"
+        options={{
+          title: 'Freshness',
+          headerLeft: () => <HeaderBackButton />,
+        }}
+      />
     </Stack>
   );
 }

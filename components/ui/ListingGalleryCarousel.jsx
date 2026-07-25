@@ -46,11 +46,17 @@ export default function ListingGalleryCarousel({ photos, onOpenGallery, horizont
             style={{ width: slideWidth }}
             onPress={() => openAt(i)}
           >
-            <Image
-              source={{ uri: ph.src }}
-              style={[styles.img, { width: slideWidth }]}
-              resizeMode="cover"
-            />
+            {ph.src ? (
+              <Image
+                source={{ uri: ph.src }}
+                style={[styles.img, { width: slideWidth }]}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={[styles.img, styles.imgPlaceholder, { width: slideWidth }]}>
+                <Text style={styles.placeholderText}>No photo</Text>
+              </View>
+            )}
             <View style={styles.shade} />
           </Pressable>
         ))}
@@ -82,6 +88,8 @@ const styles = StyleSheet.create({
     height: 220,
     backgroundColor: colors.surface2,
   },
+  imgPlaceholder: { alignItems: 'center', justifyContent: 'center' },
+  placeholderText: { color: colors.faint, fontWeight: '600' },
   shade: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.18)',

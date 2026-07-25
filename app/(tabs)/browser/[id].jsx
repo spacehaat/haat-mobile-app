@@ -16,10 +16,27 @@ import ListingDetailSections from '../../../components/ui/ListingDetailSections'
 import ListingGalleryCarousel from '../../../components/ui/ListingGalleryCarousel';
 import GallerySheet from '../../../components/ui/GallerySheet';
 import ConfirmDialog from '../../../components/ui/ConfirmDialog';
-import { coverImg, allGalleryPhotos } from '../../../lib/listingHelpers';
+import { coverImg, allGalleryPhotos, normalizeListingRecord } from '../../../lib/listingHelpers';
 import { colors } from '../../../constants/theme';
 import { inr } from '@spacehaat/utils';
-import NewListingScreen from '../../../components/inventory/NewListingScreen';
+
+function goBackToInventory() {
+  if (router.canGoBack()) router.back();
+  else router.replace('/(tabs)/browser');
+}
+
+function ListingDetailError({ message }) {
+  return (
+    <View style={styles.center}>
+      <Ionicons name="alert-circle-outline" size={36} color={colors.danger} />
+      <Text style={styles.error}>{message || 'Listing not found'}</Text>
+      <Pressable style={styles.backBtn} onPress={goBackToInventory}>
+        <Ionicons name="chevron-back" size={18} color={colors.ink} />
+        <Text style={styles.backBtnText}>Back to inventory</Text>
+      </Pressable>
+    </View>
+  );
+}
 
 export default function ListingDetailScreen() {
   const { id } = useLocalSearchParams();
@@ -39,14 +56,14 @@ export default function ListingDetailScreen() {
 
   const { data: listing, isLoading, refetch, isRefetching, error } = useQuery({
     queryKey: ['listing', listingId],
-    queryFn: () => mobileApi.getListing(listingId),
+    queryFn: async () => normalizeListingRecord(await mobileApi.getListing(listingId)),
     enabled: Boolean(listingId) && !reservedRoute,
   });
 
   const verifyMutation = useMutation({
     mutationFn: () => mobileApi.verifyListing(listingId),
     onSuccess: (updated) => {
-      queryClient.setQueryData(['listing', listingId], updated);
+      queryClient.setQueryData(['listing', listingId], normalizeListingRecord(updated));
       queryClient.invalidateQueries({ queryKey: ['listings'] });
       Alert.alert('Verified', 'Listing marked as verified.');
     },
@@ -59,7 +76,7 @@ export default function ListingDetailScreen() {
       setConfirmDeleteOpen(false);
       queryClient.removeQueries({ queryKey: ['listing', listingId] });
       queryClient.invalidateQueries({ queryKey: ['listings'] });
-      router.back();
+      goBackToInventory();
     },
     onError: (err) => Alert.alert('Delete failed', err.message || 'Could not delete listing'),
   });
@@ -70,7 +87,7 @@ export default function ListingDetailScreen() {
     ? (gallery.length
       ? gallery
       : [{
-        src: coverImg(listing, 640, 300),
+        src: coverImg(listing),
         label: listing.type,
         caption: `${listing.operator} · ${listing.micro}`,
       }])
@@ -97,7 +114,7 @@ export default function ListingDetailScreen() {
 
   if (listingId === 'new') {
     if (!canEdit) return <Redirect href={defaultTabPathForUser(user)} />;
-    return <NewListingScreen />;
+    return <Redirect href="/(tabs)/browser/new" />;
   }
 
   if (listingId === 'edit') {
@@ -106,17 +123,13 @@ export default function ListingDetailScreen() {
 
   if (isLoading) return <LoadingScreen label="Loading listing…" />;
   if (error || !listing) {
-    return (
-      <View style={styles.center}>
-        <Text style={styles.error}>{error?.message || 'Listing not found'}</Text>
-      </View>
-    );
+    return <ListingDetailError message={error?.message} />;
   }
 
   return (
-    <>
+    <View style={styles.screen}>
       <ScrollView
-        style={styles.screen}
+        style={styles.scroll}
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.brand} />}
       >
@@ -156,7 +169,7 @@ export default function ListingDetailScreen() {
           {canEdit ? (
             <Pressable
               style={[styles.btn, styles.btnEdit]}
-              onPress={() => router.push(`/(tabs)/browser/edit/${listingId}`)}
+              onPress={() => router.push({ pathname: '/(tabs)/browser/edit/[id]', params: { id: String(listingId) } })}
             >
               <Ionicons name="pencil-outline" size={20} color="#fff" />
               <Text style={styles.btnPrimaryText}>Edit listing</Text>
@@ -235,15 +248,22 @@ export default function ListingDetailScreen() {
         onCancel={() => { if (!deleteMutation.isPending) setConfirmDeleteOpen(false); }}
         onConfirm={() => deleteMutation.mutate()}
       />
-    </>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.surface2 },
+  scroll: { flex: 1 },
   content: { padding: 16, paddingBottom: 40 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-  error: { color: colors.danger },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 12, backgroundColor: colors.surface2 },
+  error: { color: colors.danger, textAlign: 'center', fontSize: 15 },
+  backBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8,
+    paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10,
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
+  },
+  backBtnText: { color: colors.ink, fontWeight: '700' },
   heroMeta: { marginBottom: 12, gap: 6 },
   title: { fontSize: 20, fontWeight: '800', color: colors.ink },
   sub: { fontSize: 14, color: colors.muted },

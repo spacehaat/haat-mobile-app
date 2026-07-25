@@ -32,7 +32,13 @@ export default function ListingDetailSections({ listing, canSeeInternal }) {
   const [open, setOpen] = useState({ A: true, B: false, C: false, D: false, E: false, F: false });
   const toggle = (key) => setOpen((prev) => ({ ...prev, [key]: !prev[key] }));
 
-  const amenities = F.extraAmenities || listing.amenities || [];
+  const rawAmenities = F.extraAmenities ?? listing.amenities ?? [];
+  const amenities = Array.isArray(rawAmenities)
+    ? rawAmenities.filter(Boolean)
+    : String(rawAmenities || '').split(/[,;|]/).map((s) => s.trim()).filter(Boolean);
+  const competitors = Array.isArray(S.competitors)
+    ? S.competitors
+    : (S.competitors ? [String(S.competitors)] : []);
 
   return (
     <View style={styles.wrap}>
@@ -114,7 +120,7 @@ export default function ListingDetailSections({ listing, canSeeInternal }) {
           <KvRow label="Pitching price" value={S.pitchingPrice != null ? inr(S.pitchingPrice) : null} />
           <KvRow label="Closing price" value={S.closingPrice != null ? inr(S.closingPrice) : null} />
           <KvRow label="YoY increment" value={S.yoyIncrement} />
-          <KvRow label="Nearby competitors" value={(S.competitors || []).join('; ') || null} />
+          <KvRow label="Nearby competitors" value={competitors.join('; ') || null} />
           <KvRow label="Expansion plans" value={S.expansionPlans} />
           <KvRow label="Commission / payment a/c" value={S.commissionAccount} />
         </DetailSection>
