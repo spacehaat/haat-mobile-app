@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import {
-  Modal, View, Text, Pressable, StyleSheet, TextInput, ScrollView, Image, SafeAreaView,
+  Modal, View, Text, Pressable, StyleSheet, TextInput, ScrollView, Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../constants/theme';
+import ModalSafeArea from '../ui/ModalSafeArea';
 
 export default function VisitRequestModal({ visible, shortlisted, advisor, onClose, onSubmit, busy }) {
   const [date1, setDate1] = useState('');
@@ -32,7 +33,7 @@ export default function VisitRequestModal({ visible, shortlisted, advisor, onClo
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={handleClose}>
-      <SafeAreaView style={styles.safe}>
+      <ModalSafeArea style={styles.safe}>
         {sent ? (
           <View style={styles.sentWrap}>
             <View style={styles.sentRing}><Ionicons name="checkmark" size={28} color="#fff" /></View>
@@ -101,7 +102,7 @@ export default function VisitRequestModal({ visible, shortlisted, advisor, onClo
             </View>
           </>
         )}
-      </SafeAreaView>
+      </ModalSafeArea>
     </Modal>
   );
 }

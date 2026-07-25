@@ -1,10 +1,11 @@
 import { useEffect, useRef } from 'react';
 import {
-  Modal, View, Text, Pressable, ScrollView, Image, StyleSheet, SafeAreaView,
+  Modal, View, Text, Pressable, ScrollView, Image, StyleSheet,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { inr } from '@spacehaat/utils';
 import { colors } from '../../constants/theme';
+import ModalSafeArea from './ModalSafeArea';
 
 const GALLERY_ROW_HEIGHT = 300;
 
@@ -24,7 +25,7 @@ export default function GallerySheet({ visible, photos, title, onClose, initialI
 
   return (
     <Modal visible animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <SafeAreaView style={styles.safe}>
+      <ModalSafeArea style={styles.safe}>
         <View style={styles.head}>
           <Text style={styles.title} numberOfLines={2}>{title || 'Gallery'}</Text>
           <Pressable onPress={onClose} hitSlop={12}>
@@ -45,7 +46,7 @@ export default function GallerySheet({ visible, photos, title, onClose, initialI
             </View>
           ))}
         </ScrollView>
-      </SafeAreaView>
+      </ModalSafeArea>
     </Modal>
   );
 }

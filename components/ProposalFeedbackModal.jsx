@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  Modal, View, Text, Pressable, StyleSheet, ScrollView, SafeAreaView, ActivityIndicator,
+  Modal, View, Text, Pressable, StyleSheet, ScrollView, ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { mobileApi } from '../lib/api';
 import { formatPortalWhen } from '../lib/portalHelpers';
 import { colors } from '../constants/theme';
+import ModalSafeArea from './ui/ModalSafeArea';
 
 function formatDates(dates = []) {
   return dates
@@ -83,7 +84,7 @@ export default function ProposalFeedbackModal({ proposalId, proposalTitle, onClo
 
   return (
     <Modal visible animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <SafeAreaView style={styles.safe}>
+      <ModalSafeArea style={styles.safe}>
         <View style={styles.head}>
           <View style={styles.headBody}>
             <Text style={styles.headTitle}>Client feedback</Text>
@@ -164,7 +165,7 @@ export default function ProposalFeedbackModal({ proposalId, proposalTitle, onClo
             </>
           )}
         </ScrollView>
-      </SafeAreaView>
+      </ModalSafeArea>
     </Modal>
   );
 }

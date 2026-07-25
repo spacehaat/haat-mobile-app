@@ -10,7 +10,7 @@ import { mobileApi } from '../../../lib/api';
 import { useAuth } from '../../../context/AuthContext';
 import { useProposal } from '../../../context/ProposalContext';
 import {
-  cityOptionsForUser, canSeeFreshness, defaultCityForUser, canSeeProposalBuilder,
+  cityOptionsForUser, canSeeFreshness, canSeeProposalBuilder,
   canManageInventory,
 } from '../../../lib/access';
 import ListingCard from '../../../components/ui/ListingCard';
@@ -30,11 +30,7 @@ export default function BrowserScreen() {
   const canEdit = canManageInventory(user);
 
   const cityOptions = useMemo(() => cityOptionsForUser(user), [user]);
-  const [city, setCity] = useState(() => {
-    const opts = cityOptionsForUser(user);
-    if (opts.includes(defaultCityForUser(user))) return defaultCityForUser(user);
-    return opts[0] || 'All cities';
-  });
+  const [city, setCity] = useState('All cities');
   const [bFilter, setBFilter] = useState(INITIAL_FILTER);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [view, setView] = useState('grid');

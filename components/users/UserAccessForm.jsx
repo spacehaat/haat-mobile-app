@@ -9,6 +9,7 @@ import {
   ASSIGNABLE_CITIES, PERM_LABELS, permissionLabel,
 } from '../../lib/access';
 import { colors } from '../../constants/theme';
+import ModalSafeArea from '../ui/ModalSafeArea';
 
 const GENDERS = [
   ['unspecified', 'Prefer not to say'],
@@ -119,6 +120,7 @@ export default function UserAccessForm({
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <ModalSafeArea style={styles.flex}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -246,6 +248,7 @@ export default function UserAccessForm({
           </Pressable>
         </View>
       </KeyboardAvoidingView>
+      </ModalSafeArea>
     </Modal>
   );
 }

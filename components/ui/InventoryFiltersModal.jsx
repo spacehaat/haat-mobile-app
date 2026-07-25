@@ -1,11 +1,12 @@
 import {
-  Modal, View, Text, Pressable, ScrollView, StyleSheet, SafeAreaView,
+  Modal, View, Text, Pressable, ScrollView, StyleSheet,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
   SPACE_TYPES, AMENITIES, BUILDING_TYPES, MIN_SEAT_TIERS, MAX_PRICE_TIERS, INITIAL_FILTER,
 } from '../../constants/inventory';
 import { colors } from '../../constants/theme';
+import ModalSafeArea from './ModalSafeArea';
 
 function FilterGroup({ label, children }) {
   return (
@@ -44,7 +45,7 @@ export default function InventoryFiltersModal({ visible, filter, onChange, onClo
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <SafeAreaView style={styles.safe}>
+      <ModalSafeArea style={styles.safe}>
         <View style={styles.head}>
           <Text style={styles.title}>Filters</Text>
           <View style={styles.headActions}>
@@ -137,7 +138,7 @@ export default function InventoryFiltersModal({ visible, filter, onChange, onClo
             <Text style={styles.applyText}>Show results</Text>
           </Pressable>
         </View>
-      </SafeAreaView>
+      </ModalSafeArea>
     </Modal>
   );
 }
