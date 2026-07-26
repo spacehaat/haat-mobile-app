@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   View, Text, FlatList, Pressable, StyleSheet, ActivityIndicator, RefreshControl, Alert,
 } from 'react-native';
@@ -9,12 +9,16 @@ import { mobileApi } from '../../../lib/api';
 import { useAuth } from '../../../context/AuthContext';
 import { canSeeFreshness } from '../../../lib/access';
 import FreshBadge from '../../../components/ui/FreshBadge';
+import ListPagination from '../../../components/ui/ListPagination';
+import { DEFAULT_FRESHNESS_PAGE_SIZE } from '../../../constants/pagination';
 import { colors } from '../../../constants/theme';
 
 export default function FreshnessScreen() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [verifyingId, setVerifyingId] = useState(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_FRESHNESS_PAGE_SIZE);
 
   const { data: stats } = useQuery({
     queryKey: ['dashboard-stats'],
@@ -49,11 +53,28 @@ export default function FreshnessScreen() {
   });
 
   const listings = data || [];
+  const listTotal = listings.length;
+  const pageCount = Math.max(1, Math.ceil(listTotal / pageSize));
+  const currentPage = Math.min(page, pageCount);
+
+  const pagedListings = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return listings.slice(start, start + pageSize);
+  }, [listings, currentPage, pageSize]);
+
   const counts = useMemo(() => ({
     fresh: stats?.listings?.fresh ?? 0,
     stale: stats?.listings?.stale ?? 0,
     expired: stats?.listings?.expired ?? 0,
   }), [stats]);
+
+  useEffect(() => {
+    if (page > pageCount) setPage(pageCount);
+  }, [page, pageCount]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [pageSize]);
 
   if (!canSeeFreshness(user)) return <Redirect href="/(tabs)" />;
 
@@ -75,11 +96,24 @@ export default function FreshnessScreen() {
       </View>
 
       <FlatList
-        data={listings}
+        data={pagedListings}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
         refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.brand} />}
-        ListHeaderComponent={<Text style={styles.listTitle}>Needs re-verification ({listings.length})</Text>}
+        ListHeaderComponent={(
+          <Text style={styles.listTitle}>Needs re-verification ({listTotal})</Text>
+        )}
+        ListFooterComponent={(
+          <ListPagination
+            page={currentPage}
+            pageCount={pageCount}
+            total={listTotal}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+            disabled={isLoading}
+          />
+        )}
         renderItem={({ item }) => (
           <View style={styles.row}>
             <View style={styles.rowBody}>

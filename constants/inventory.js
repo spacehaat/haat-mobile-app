@@ -1,6 +1,7 @@
 import { PAGE_SIZE } from './listings';
+import { DEFAULT_PAGE_SIZE } from './pagination';
 
-export { PAGE_SIZE };
+export { PAGE_SIZE, DEFAULT_PAGE_SIZE };
 
 export const SPACE_TYPES = ['Hot desk', 'Dedicated desk', 'Private cabin', 'Managed office'];
 
@@ -52,7 +53,7 @@ export function countActiveFilters(bFilter) {
   );
 }
 
-export function buildListingFilters(bFilter, city, search, page) {
+export function buildListingFilters(bFilter, city, search, page, limit = DEFAULT_PAGE_SIZE) {
   return {
     city: city === 'All cities' ? undefined : city,
     type: bFilter.type,
@@ -67,7 +68,7 @@ export function buildListingFilters(bFilter, city, search, page) {
     vastu: bFilter.vastu || undefined,
     search: search || undefined,
     page,
-    limit: PAGE_SIZE,
+    limit,
   };
 }
 

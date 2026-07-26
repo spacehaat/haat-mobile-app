@@ -15,8 +15,9 @@ import {
 } from '../../../lib/access';
 import ListingCard from '../../../components/ui/ListingCard';
 import InventoryFiltersModal, { INITIAL_FILTER } from '../../../components/ui/InventoryFiltersModal';
+import ListPagination from '../../../components/ui/ListPagination';
 import {
-  buildListingFilters, countActiveFilters, normalizeListing, PAGE_SIZE,
+  buildListingFilters, countActiveFilters, normalizeListing, DEFAULT_PAGE_SIZE,
 } from '../../../constants/inventory';
 import { colors } from '../../../constants/theme';
 
@@ -37,6 +38,7 @@ export default function BrowserScreen() {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
   const activeFilterCount = countActiveFilters(bFilter);
 
@@ -81,21 +83,21 @@ export default function BrowserScreen() {
     onSearchChange._t = setTimeout(() => setDebouncedSearch(text.trim()), 350);
   }, []);
 
-  useEffect(() => { setPage(1); }, [bFilter, city, debouncedSearch]);
+  useEffect(() => { setPage(1); }, [bFilter, city, debouncedSearch, pageSize]);
 
   const queryKey = useMemo(
-    () => ['listings', page, city, bFilter, debouncedSearch],
-    [page, city, bFilter, debouncedSearch],
+    () => ['listings', page, pageSize, city, bFilter, debouncedSearch],
+    [page, pageSize, city, bFilter, debouncedSearch],
   );
 
   const { data, isLoading, isRefetching, refetch, error } = useQuery({
     queryKey,
-    queryFn: () => mobileApi.listListings(buildListingFilters(bFilter, city, debouncedSearch, page)),
+    queryFn: () => mobileApi.listListings(buildListingFilters(bFilter, city, debouncedSearch, page, pageSize)),
   });
 
   const items = (data?.items || []).map(normalizeListing);
   const total = data?.total || 0;
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   const toggleProposal = async (id, listing) => {
     try {
@@ -191,17 +193,17 @@ export default function BrowserScreen() {
             )}
           </View>
         )}
-        ListFooterComponent={totalPages > 1 ? (
-          <View style={styles.pagination}>
-            <Pressable style={[styles.pageBtn, page <= 1 && styles.pageBtnOff]} disabled={page <= 1} onPress={() => setPage((p) => p - 1)}>
-              <Text style={styles.pageBtnText}>Previous</Text>
-            </Pressable>
-            <Text style={styles.pageInfo}>{page} / {totalPages}</Text>
-            <Pressable style={[styles.pageBtn, page >= totalPages && styles.pageBtnOff]} disabled={page >= totalPages} onPress={() => setPage((p) => p + 1)}>
-              <Text style={styles.pageBtnText}>Next</Text>
-            </Pressable>
-          </View>
-        ) : null}
+        ListFooterComponent={(
+          <ListPagination
+            page={page}
+            pageCount={totalPages}
+            total={total}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+            disabled={isLoading}
+          />
+        )}
       />
 
       <InventoryFiltersModal
@@ -266,14 +268,4 @@ const styles = StyleSheet.create({
   error: { color: colors.danger, marginBottom: 8 },
   empty: { padding: 40, alignItems: 'center', gap: 10 },
   emptyText: { color: colors.muted, textAlign: 'center' },
-  pagination: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12,
-  },
-  pageBtn: {
-    paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10,
-    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
-  },
-  pageBtnOff: { opacity: 0.4 },
-  pageBtnText: { fontWeight: '600', color: colors.ink, fontSize: 13 },
-  pageInfo: { color: colors.muted, fontSize: 13 },
 });

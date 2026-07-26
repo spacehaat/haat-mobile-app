@@ -34,6 +34,21 @@ export function applyTimeToDate(baseDate, timeStr) {
   return d;
 }
 
+function parseLocalDateParts(datePart) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(datePart || '').trim());
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const parsed = new Date(year, month - 1, day);
+  if (
+    parsed.getFullYear() !== year
+    || parsed.getMonth() !== month - 1
+    || parsed.getDate() !== day
+  ) return null;
+  return parsed;
+}
+
 export function buildReminderDate(presetId, { customDate, customTime } = {}) {
   const base = new Date();
   base.setSeconds(0, 0);
@@ -55,9 +70,8 @@ export function buildReminderDate(presetId, { customDate, customTime } = {}) {
     return applyTimeToDate(base, defaultCustomTimeString());
   }
 
-  const datePart = customDate || defaultCustomDateString();
-  const parsed = new Date(`${datePart}T00:00:00`);
-  if (Number.isNaN(parsed.getTime())) return null;
+  const parsed = parseLocalDateParts(customDate || defaultCustomDateString());
+  if (!parsed) return null;
   return applyTimeToDate(parsed, customTime || defaultCustomTimeString());
 }
 

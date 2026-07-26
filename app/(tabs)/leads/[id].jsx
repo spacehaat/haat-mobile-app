@@ -14,6 +14,7 @@ import { runOfflineAction } from '../../../lib/offlineQueue';
 import { formatDate, isOverdue, leadSubtitle } from '../../../lib/format';
 import { formatReminderDateTime, reminderStatus, activeReminderDueAt } from '@spacehaat/utils';
 import LeadReminderPanel from '../../../components/leads/LeadReminderPanel';
+import CmbReminderModal from '../../../components/leads/CmbReminderModal';
 import { STAGES, STAGE_LABEL } from '../../../constants/leads';
 import StageBadge from '../../../components/ui/StageBadge';
 import LoadingScreen from '../../../components/ui/LoadingScreen';
@@ -31,6 +32,7 @@ export default function LeadDetailScreen() {
   const insets = useSafeAreaInsets();
   const [noteText, setNoteText] = useState('');
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [cmbModalOpen, setCmbModalOpen] = useState(false);
 
   const { data: lead, isLoading, refetch, isRefetching, error } = useQuery({
     queryKey: ['lead', leadId],
@@ -50,10 +52,14 @@ export default function LeadDetailScreen() {
   });
 
   const stageMutation = useMutation({
-    mutationFn: async (stage) => {
+    mutationFn: async ({ stage, reminder }) => {
       const result = await runOfflineAction({ type: 'UPDATE_LEAD_STAGE', leadId, stage });
       if (result?.queued) return { ...lead, stage, _offlineQueued: true };
-      return result;
+      let updated = result;
+      if (reminder?.dueAt) {
+        updated = await mobileApi.setLeadReminder(leadId, reminder);
+      }
+      return updated;
     },
     onSuccess: (updated) => {
       if (updated._offlineQueued) {
@@ -61,9 +67,18 @@ export default function LeadDetailScreen() {
       }
       queryClient.setQueryData(['lead', leadId], updated);
       queryClient.invalidateQueries({ queryKey: ['leads'] });
+      setCmbModalOpen(false);
     },
     onError: (err) => Alert.alert('Update failed', err.message),
   });
+
+  const applyStage = (stage, reminder, { force = false } = {}) => {
+    if (stage === 'cmb' && !reminder && !force) {
+      setCmbModalOpen(true);
+      return;
+    }
+    stageMutation.mutate({ stage, reminder });
+  };
 
   const noteMutation = useMutation({
     mutationFn: async (text) => {
@@ -92,7 +107,7 @@ export default function LeadDetailScreen() {
     onSuccess: (updated) => {
       queryClient.setQueryData(['lead', leadId], updated);
       queryClient.invalidateQueries({ queryKey: ['leads'] });
-      Alert.alert('Reminder set', 'You will get a notification at the scheduled time.');
+      Alert.alert('Reminder set', 'The assignee will get a push notification at the scheduled time.');
     },
     onError: (err) => Alert.alert('Could not set reminder', err.message || 'Try again'),
   });
@@ -192,7 +207,7 @@ export default function LeadDetailScreen() {
                 <Pressable
                   key={value}
                   style={[styles.stagePill, active && styles.stagePillOn]}
-                  onPress={() => stageMutation.mutate(value)}
+                  onPress={() => applyStage(value)}
                   disabled={stageMutation.isPending}
                   hitSlop={4}
                 >
@@ -308,6 +323,14 @@ export default function LeadDetailScreen() {
         busy={deleteMutation.isPending}
         onCancel={() => { if (!deleteMutation.isPending) setConfirmDeleteOpen(false); }}
         onConfirm={() => deleteMutation.mutate()}
+      />
+
+      <CmbReminderModal
+        visible={cmbModalOpen}
+        saving={stageMutation.isPending}
+        onClose={() => { if (!stageMutation.isPending) setCmbModalOpen(false); }}
+        onSkip={() => applyStage('cmb', null, { force: true })}
+        onSave={(reminder) => stageMutation.mutate({ stage: 'cmb', reminder })}
       />
     </KeyboardAvoidingView>
   );

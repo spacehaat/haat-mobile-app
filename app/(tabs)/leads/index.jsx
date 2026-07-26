@@ -8,7 +8,9 @@ import { useQuery } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { mobileApi } from '../../../lib/api';
 import { formatDate, leadSubtitle } from '../../../lib/format';
-import { PAGE_SIZE, STAGES } from '../../../constants/leads';
+import { STAGES } from '../../../constants/leads';
+import { DEFAULT_PAGE_SIZE } from '../../../constants/pagination';
+import ListPagination from '../../../components/ui/ListPagination';
 import {
   MOBILE_DATE_FILTERS,
   leadDateFilterLabel,
@@ -145,7 +147,9 @@ function DateFilterModal({
 export default function LeadsListScreen() {
   const [search, setSearch] = useState('');
   const [stage, setStage] = useState('');
+  const [reminderFilter, setReminderFilter] = useState('');
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [dateFilter, setDateFilter] = useState('this_month');
   const [customDateFrom, setCustomDateFrom] = useState('');
@@ -165,17 +169,18 @@ export default function LeadsListScreen() {
   );
 
   const queryKey = useMemo(
-    () => ['leads', page, debouncedSearch, stage, dateFilter, customDateFrom, customDateTo, dateRange.dateFrom, dateRange.dateTo],
-    [page, debouncedSearch, stage, dateFilter, customDateFrom, customDateTo, dateRange.dateFrom, dateRange.dateTo],
+    () => ['leads', page, pageSize, debouncedSearch, stage, reminderFilter, dateFilter, customDateFrom, customDateTo, dateRange.dateFrom, dateRange.dateTo],
+    [page, pageSize, debouncedSearch, stage, reminderFilter, dateFilter, customDateFrom, customDateTo, dateRange.dateFrom, dateRange.dateTo],
   );
 
   const { data, isLoading, isRefetching, refetch, error } = useQuery({
     queryKey,
     queryFn: () => mobileApi.listLeads({
       page,
-      limit: PAGE_SIZE,
+      limit: pageSize,
       search: debouncedSearch,
       stage,
+      reminder: reminderFilter,
       dateFrom: dateRange.dateFrom,
       dateTo: dateRange.dateTo,
     }),
@@ -184,10 +189,15 @@ export default function LeadsListScreen() {
   const items = data?.items || [];
   const total = data?.total || 0;
   const stageCounts = data?.stageCounts || {};
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   const onStageChange = useCallback((value) => {
     setStage(value);
+    setPage(1);
+  }, []);
+
+  const onReminderFilterToggle = useCallback(() => {
+    setReminderFilter((prev) => (prev === 'upcoming' ? '' : 'upcoming'));
     setPage(1);
   }, []);
 
@@ -249,6 +259,16 @@ export default function LeadsListScreen() {
 
       <StageFilters stage={stage} onChange={onStageChange} stageCounts={stageCounts} />
 
+      <Pressable
+        style={[styles.reminderChip, reminderFilter === 'upcoming' && styles.reminderChipOn]}
+        onPress={onReminderFilterToggle}
+      >
+        <Ionicons name="notifications-outline" size={14} color={reminderFilter === 'upcoming' ? colors.brand : colors.muted} />
+        <Text style={[styles.reminderChipText, reminderFilter === 'upcoming' && styles.reminderChipTextOn]}>
+          Upcoming reminders
+        </Text>
+      </Pressable>
+
       {error ? <Text style={styles.error}>{error.message}</Text> : null}
       {stage ? (
         <Pressable style={styles.clearFilter} onPress={() => onStageChange('')}>
@@ -294,25 +314,17 @@ export default function LeadsListScreen() {
             )}
           </View>
         )}
-        ListFooterComponent={totalPages > 1 ? (
-          <View style={styles.pagination}>
-            <Pressable
-              style={[styles.pageBtn, page <= 1 && styles.pageBtnOff]}
-              disabled={page <= 1}
-              onPress={() => setPage((p) => p - 1)}
-            >
-              <Text style={styles.pageBtnText}>Previous</Text>
-            </Pressable>
-            <Text style={styles.pageInfo}>{page} / {totalPages}</Text>
-            <Pressable
-              style={[styles.pageBtn, page >= totalPages && styles.pageBtnOff]}
-              disabled={page >= totalPages}
-              onPress={() => setPage((p) => p + 1)}
-            >
-              <Text style={styles.pageBtnText}>Next</Text>
-            </Pressable>
-          </View>
-        ) : null}
+        ListFooterComponent={(
+          <ListPagination
+            page={page}
+            pageCount={totalPages}
+            total={total}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+            disabled={isLoading}
+          />
+        )}
       />
     </View>
   );
@@ -380,6 +392,22 @@ const styles = StyleSheet.create({
   chipOn: { backgroundColor: colors.ink, borderColor: colors.ink },
   chipText: { fontSize: 13, fontWeight: '600', color: colors.ink },
   chipTextOn: { color: '#fff' },
+  reminderChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 8,
+  },
+  reminderChipOn: { backgroundColor: colors.brandSoft, borderColor: colors.brand },
+  reminderChipText: { fontSize: 12, fontWeight: '700', color: colors.muted },
+  reminderChipTextOn: { color: colors.brandInk },
   clearFilter: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -413,17 +441,6 @@ const styles = StyleSheet.create({
   emptyText: { color: colors.muted, fontSize: 15, fontWeight: '600' },
   emptyHint: { color: colors.faint, fontSize: 13, textAlign: 'center' },
   error: { color: colors.danger, marginBottom: 8 },
-  pagination: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingVertical: 12, paddingHorizontal: 4,
-  },
-  pageBtn: {
-    paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10,
-    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
-  },
-  pageBtnOff: { opacity: 0.4 },
-  pageBtnText: { fontWeight: '600', color: colors.ink, fontSize: 13 },
-  pageInfo: { color: colors.muted, fontSize: 13 },
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.35)',

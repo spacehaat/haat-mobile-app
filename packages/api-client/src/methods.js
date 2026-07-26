@@ -207,6 +207,7 @@ export function createApiMethods(request) {
       source = '',
       dateFrom = '',
       dateTo = '',
+      reminder = '',
     } = {}) {
       const params = new URLSearchParams();
       params.set('page', String(page));
@@ -219,6 +220,7 @@ export function createApiMethods(request) {
       if (source) params.set('source', source);
       if (dateFrom) params.set('dateFrom', dateFrom);
       if (dateTo) params.set('dateTo', dateTo);
+      if (reminder) params.set('reminder', reminder);
       return request(`/api/v1/leads?${params}`);
     },
 
