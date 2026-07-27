@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Alert, Pressable, ScrollView, StyleSheet, Text, View, ActivityIndicator,
   RefreshControl,
 } from 'react-native';
-import { Redirect, router, useLocalSearchParams } from 'expo-router';
+import { Redirect, router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { mobileApi } from '../../../lib/api';
@@ -17,6 +17,7 @@ import ListingGalleryCarousel from '../../../components/ui/ListingGalleryCarouse
 import GallerySheet from '../../../components/ui/GallerySheet';
 import ConfirmDialog from '../../../components/ui/ConfirmDialog';
 import { coverImg, allGalleryPhotos, normalizeListingRecord } from '../../../lib/listingHelpers';
+import NewListingScreen from '../../../components/inventory/NewListingScreen';
 import { colors } from '../../../constants/theme';
 import { inr } from '@spacehaat/utils';
 
@@ -42,6 +43,7 @@ export default function ListingDetailScreen() {
   const { id } = useLocalSearchParams();
   const listingId = Array.isArray(id) ? id[0] : id;
   const reservedRoute = listingId === 'edit' || listingId === 'new';
+  const navigation = useNavigation();
 
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -53,6 +55,12 @@ export default function ListingDetailScreen() {
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [galleryIndex, setGalleryIndex] = useState(0);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+
+  useEffect(() => {
+    if (listingId === 'new') {
+      navigation.setOptions({ title: 'Add inventory' });
+    }
+  }, [navigation, listingId]);
 
   const { data: listing, isLoading, refetch, isRefetching, error } = useQuery({
     queryKey: ['listing', listingId],
@@ -114,7 +122,9 @@ export default function ListingDetailScreen() {
 
   if (listingId === 'new') {
     if (!canEdit) return <Redirect href={defaultTabPathForUser(user)} />;
-    return <Redirect href="/(tabs)/browser/new" />;
+    // Android standalone builds can resolve /browser/new through [id]; redirecting
+    // back to /browser/new causes an infinite loop and crashes the app.
+    return <NewListingScreen />;
   }
 
   if (listingId === 'edit') {

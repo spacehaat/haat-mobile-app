@@ -1,5 +1,10 @@
 import { Alert, View, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
+
+function goBackToInventory() {
+  if (router.canGoBack()) router.back();
+  else router.replace('/(tabs)/browser');
+}
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { mobileApi } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
@@ -33,7 +38,7 @@ export default function NewListingScreen() {
         listing={null}
         canSeeInternal={canEdit}
         saving={saveMutation.isPending}
-        onCancel={() => router.back()}
+        onCancel={goBackToInventory}
         onSave={(payload) => saveMutation.mutate(payload)}
       />
     </View>
