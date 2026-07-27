@@ -35,7 +35,13 @@ export default function GallerySheet({ visible, photos, title, onClose, initialI
         <ScrollView ref={scrollRef} contentContainerStyle={styles.content}>
           {(photos || []).map((ph, i) => (
             <View key={`${ph.src}-${i}`} style={styles.cell}>
-              <Image source={{ uri: ph.src }} style={styles.img} resizeMode="cover" />
+              {ph.src && (ph.src.startsWith('http') || ph.src.startsWith('file:') || ph.src.startsWith('content:')) ? (
+                <Image source={{ uri: ph.src }} style={styles.img} resizeMode="cover" />
+              ) : (
+                <View style={[styles.img, { alignItems: 'center', justifyContent: 'center' }]}>
+                  <Text style={{ color: colors.faint }}>No photo</Text>
+                </View>
+              )}
               <View style={styles.meta}>
                 <Text style={styles.label}>{ph.label || `Photo ${i + 1}`}</Text>
                 {ph.caption ? <Text style={styles.caption}>{ph.caption}</Text> : null}

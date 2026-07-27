@@ -1,15 +1,17 @@
-import { useEffect, useState } from 'react';
+import { Component, useState } from 'react';
 import {
   Alert, Pressable, ScrollView, StyleSheet, Text, View, ActivityIndicator,
   RefreshControl,
 } from 'react-native';
-import { Redirect, router, useLocalSearchParams, useNavigation } from 'expo-router';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { mobileApi } from '../../../lib/api';
 import { useAuth } from '../../../context/AuthContext';
 import { useProposal } from '../../../context/ProposalContext';
-import { canVerifyListings, canManageInventory, canSeeProposalBuilder, isAdmin, defaultTabPathForUser } from '../../../lib/access';
+import {
+  canVerifyListings, canManageInventory, canSeeProposalBuilder, isAdmin, defaultTabPathForUser,
+} from '../../../lib/access';
 import FreshBadge from '../../../components/ui/FreshBadge';
 import LoadingScreen from '../../../components/ui/LoadingScreen';
 import ListingDetailSections from '../../../components/ui/ListingDetailSections';
@@ -17,7 +19,6 @@ import ListingGalleryCarousel from '../../../components/ui/ListingGalleryCarouse
 import GallerySheet from '../../../components/ui/GallerySheet';
 import ConfirmDialog from '../../../components/ui/ConfirmDialog';
 import { coverImg, allGalleryPhotos, normalizeListingRecord } from '../../../lib/listingHelpers';
-import NewListingScreen from '../../../components/inventory/NewListingScreen';
 import { colors } from '../../../constants/theme';
 import { inr } from '@spacehaat/utils';
 
@@ -39,11 +40,25 @@ function ListingDetailError({ message }) {
   );
 }
 
-export default function ListingDetailScreen() {
+class ListingDetailBoundary extends Component {
+  state = { error: null };
+
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+
+  render() {
+    if (this.state.error) {
+      return <ListingDetailError message={this.state.error?.message || 'Something went wrong'} />;
+    }
+    return this.props.children;
+  }
+}
+
+function ListingDetailBody() {
   const { id } = useLocalSearchParams();
   const listingId = Array.isArray(id) ? id[0] : id;
-  const reservedRoute = listingId === 'edit' || listingId === 'new';
-  const navigation = useNavigation();
+  const reservedRoute = listingId === 'edit' || listingId === 'new' || listingId === 'add';
 
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -55,12 +70,6 @@ export default function ListingDetailScreen() {
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [galleryIndex, setGalleryIndex] = useState(0);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
-
-  useEffect(() => {
-    if (listingId === 'new') {
-      navigation.setOptions({ title: 'Add inventory' });
-    }
-  }, [navigation, listingId]);
 
   const { data: listing, isLoading, refetch, isRefetching, error } = useQuery({
     queryKey: ['listing', listingId],
@@ -89,17 +98,36 @@ export default function ListingDetailScreen() {
     onError: (err) => Alert.alert('Delete failed', err.message || 'Could not delete listing'),
   });
 
-  const inProposal = listing ? isInProposal(listing.id || listing._id) : false;
-  const gallery = listing ? allGalleryPhotos(listing) : [];
-  const carouselPhotos = listing
-    ? (gallery.length
-      ? gallery
-      : [{
-        src: coverImg(listing),
-        label: listing.type,
-        caption: `${listing.operator} · ${listing.micro}`,
-      }])
-    : [];
+  // On some Android builds, /browser/add (and /new) resolve as [id]="add"|"new".
+  // Render the wizard inline — do NOT redirect (that loops and kills the app).
+  if (listingId === 'new' || listingId === 'add') {
+    if (!canEdit) return <Redirect href={defaultTabPathForUser(user)} />;
+    // Lazy require so real listing detail screens don't load the wizard module.
+    const NewListingScreen = require('../../../components/inventory/NewListingScreen').default;
+    return <NewListingScreen />;
+  }
+
+  if (listingId === 'edit') {
+    return <Redirect href="/(tabs)/browser" />;
+  }
+
+  if (!listingId) {
+    return <ListingDetailError message="Missing listing id" />;
+  }
+
+  if (isLoading) return <LoadingScreen label="Loading listing…" />;
+  if (error || !listing) {
+    return <ListingDetailError message={error?.message} />;
+  }
+
+  const inProposal = isInProposal(listing.id || listing._id);
+  const gallery = allGalleryPhotos(listing);
+  const cover = coverImg(listing);
+  const carouselPhotos = gallery.length
+    ? gallery
+    : (cover
+      ? [{ src: cover, label: listing.type || 'Photo', caption: `${listing.operator || ''} · ${listing.micro || ''}` }]
+      : []);
 
   const openGallery = (index = 0) => {
     setGalleryIndex(index);
@@ -107,7 +135,6 @@ export default function ListingDetailScreen() {
   };
 
   const toggleProposal = async () => {
-    if (!listing) return;
     const lid = listing.id || listing._id;
     try {
       if (inProposal) {
@@ -119,22 +146,6 @@ export default function ListingDetailScreen() {
       Alert.alert('Proposal', err.message || 'Could not update proposal');
     }
   };
-
-  if (listingId === 'new') {
-    if (!canEdit) return <Redirect href={defaultTabPathForUser(user)} />;
-    // Android standalone builds can resolve /browser/new through [id]; redirecting
-    // back to /browser/new causes an infinite loop and crashes the app.
-    return <NewListingScreen />;
-  }
-
-  if (listingId === 'edit') {
-    return <Redirect href="/(tabs)/browser" />;
-  }
-
-  if (isLoading) return <LoadingScreen label="Loading listing…" />;
-  if (error || !listing) {
-    return <ListingDetailError message={error?.message} />;
-  }
 
   return (
     <View style={styles.screen}>
@@ -179,7 +190,7 @@ export default function ListingDetailScreen() {
           {canEdit ? (
             <Pressable
               style={[styles.btn, styles.btnEdit]}
-              onPress={() => router.push({ pathname: '/(tabs)/browser/edit/[id]', params: { id: String(listingId) } })}
+              onPress={() => router.push(`/(tabs)/browser/edit/${encodeURIComponent(String(listingId))}`)}
             >
               <Ionicons name="pencil-outline" size={20} color="#fff" />
               <Text style={styles.btnPrimaryText}>Edit listing</Text>
@@ -259,6 +270,14 @@ export default function ListingDetailScreen() {
         onConfirm={() => deleteMutation.mutate()}
       />
     </View>
+  );
+}
+
+export default function ListingDetailScreen() {
+  return (
+    <ListingDetailBoundary>
+      <ListingDetailBody />
+    </ListingDetailBoundary>
   );
 }
 

@@ -13,6 +13,8 @@ function HeaderBackButton() {
       }}
       style={{ marginLeft: 4, padding: 6 }}
       hitSlop={8}
+      accessibilityRole="button"
+      accessibilityLabel="Go back"
     >
       <Ionicons name="chevron-back" size={24} color={colors.ink} />
     </Pressable>
@@ -26,17 +28,24 @@ export default function BrowserLayout() {
         headerStyle: { backgroundColor: colors.surface },
         headerTitleStyle: { fontWeight: '700', color: colors.ink },
         headerShadowVisible: false,
-        headerBackVisible: true,
+        headerBackVisible: false,
         gestureEnabled: true,
-        contentStyle: { flex: 1, backgroundColor: colors.surface2 },
+        animation: 'slide_from_right',
+        contentStyle: { backgroundColor: colors.surface2 },
       }}
     >
-      <Stack.Screen name="index" options={{ title: 'Inventory' }} />
+      <Stack.Screen name="index" options={{ title: 'Inventory', headerLeft: undefined }} />
+      <Stack.Screen
+        name="add"
+        options={{
+          title: 'Add inventory',
+          headerLeft: () => <HeaderBackButton />,
+        }}
+      />
       <Stack.Screen
         name="new"
         options={{
           title: 'Add inventory',
-          animation: 'slide_from_right',
           headerLeft: () => <HeaderBackButton />,
         }}
       />

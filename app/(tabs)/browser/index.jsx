@@ -65,7 +65,7 @@ export default function BrowserScreen() {
           ) : null}
           {canEdit ? (
             <Pressable
-              onPress={() => router.push({ pathname: '/(tabs)/browser/[id]', params: { id: 'new' } })}
+              onPress={() => router.push('/(tabs)/browser/add')}
               style={styles.headerIcon}
             >
               <Ionicons name="add-circle-outline" size={26} color={colors.brand} />
@@ -176,7 +176,10 @@ export default function BrowserScreen() {
             showProposalAction={showProposal}
             inProposal={isInProposal(item.id)}
             onToggleProposal={toggleProposal}
-            onPress={(id) => router.push({ pathname: '/(tabs)/browser/[id]', params: { id: String(id) } })}
+            onPress={(id) => {
+              if (!id) return;
+              router.push(`/(tabs)/browser/${encodeURIComponent(String(id))}`);
+            }}
           />
         )}
         ListHeaderComponent={listHeader}

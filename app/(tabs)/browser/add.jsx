@@ -3,12 +3,10 @@ import { useAuth } from '../../../context/AuthContext';
 import { canManageInventory, defaultTabPathForUser } from '../../../lib/access';
 import NewListingScreen from '../../../components/inventory/NewListingScreen';
 
-/** Back-compat route — prefer /(tabs)/browser/add */
-export default function NewListingAlias() {
+export default function AddListingRoute() {
   const { user } = useAuth();
   if (!canManageInventory(user)) {
     return <Redirect href={defaultTabPathForUser(user)} />;
   }
-  // Render inline (no redirect to /add) to avoid Android route rematch loops.
   return <NewListingScreen />;
 }

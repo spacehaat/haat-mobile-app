@@ -46,7 +46,7 @@ export default function ListingGalleryCarousel({ photos, onOpenGallery, horizont
             style={{ width: slideWidth }}
             onPress={() => openAt(i)}
           >
-            {ph.src ? (
+            {ph.src && (ph.src.startsWith('http') || ph.src.startsWith('file:') || ph.src.startsWith('content:')) ? (
               <Image
                 source={{ uri: ph.src }}
                 style={[styles.img, { width: slideWidth }]}
