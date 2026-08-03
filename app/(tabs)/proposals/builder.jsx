@@ -16,12 +16,29 @@ import {
   proposalChannelForApi,
   shareProposalWithMessage,
   shareSuccessMessage,
-  openProposalPdf,
+  buildProposalShareMessage,
 } from '../../../lib/shareProposal';
 import { normalizeListing } from '../../../constants/inventory';
 import RequireScreen from '../../../components/RequireScreen';
 import { colors } from '../../../constants/theme';
 import { inr } from '@spacehaat/utils';
+
+async function fetchListingsByIds(ids) {
+  const unique = [...new Set((ids || []).map((id) => String(id)).filter(Boolean))];
+  if (!unique.length) return [];
+
+  const results = await Promise.all(unique.map(async (id) => {
+    try {
+      const listing = await mobileApi.getListing(id);
+      return normalizeListing(listing);
+    } catch {
+      return null;
+    }
+  }));
+
+  const byId = new Map(results.filter(Boolean).map((l) => [String(l.id), l]));
+  return unique.map((id) => byId.get(id)).filter(Boolean);
+}
 
 export default function ProposalBuilderScreen() {
   const insets = useSafeAreaInsets();
@@ -43,21 +60,20 @@ export default function ProposalBuilderScreen() {
   const [pdfLoading, setPdfLoading] = useState(false);
   const [pdfMeta, setPdfMeta] = useState(null);
 
-  const { data: listingsData, isLoading: listingsLoading } = useQuery({
-    queryKey: ['listings', 'proposal-builder'],
-    queryFn: () => mobileApi.listListings({ limit: 500 }),
+  // Fetch each selected listing by id (same as web using full listing cache).
+  // Avoids missing spaces when they fall outside a generic listListings page.
+  const { data: selectedListings = [], isLoading: listingsLoading } = useQuery({
+    queryKey: ['proposal-builder-listings', proposalIds],
+    queryFn: () => fetchListingsByIds(proposalIds),
     enabled: proposalIds.length > 0,
   });
 
-  const allListings = useMemo(
-    () => (listingsData?.items || []).map(normalizeListing),
-    [listingsData],
-  );
-
-  const items = useMemo(
-    () => proposalIds.map((id) => allListings.find((l) => l.id === id)).filter(Boolean),
-    [proposalIds, allListings],
-  );
+  const items = useMemo(() => {
+    const byId = new Map((selectedListings || []).map((l) => [String(l.id), l]));
+    return proposalIds
+      .map((id) => byId.get(String(id)))
+      .filter(Boolean);
+  }, [proposalIds, selectedListings]);
 
   const proposalRender = useMemo(() => buildProposalRender(items), [items]);
 
@@ -76,16 +92,15 @@ export default function ProposalBuilderScreen() {
   }, [items.length, coverNoteText, coverNoteIdx, client.name, client.company]);
 
   const brokerName = user?.name || 'Spacehaat';
-  const brokerFirst = brokerName.split(' ')[0] || brokerName;
 
-  const sendMessage = useMemo(() => {
-    const cl = client.name || 'there';
-    const co = client.company || '';
-    if (sendChannel === 'wa') {
-      return `Hi ${cl}! 👋 As discussed, here's a proposal with ${items.length} workspace options${co ? ` for ${co}` : ''} that match your requirement. All are verified-available right now. PDF link below — let me know which you'd like to visit. — ${brokerFirst}, Spacehaat`;
-    }
-    return `Dear ${cl},\n\nPlease find a curated proposal of ${items.length} workspace options${co ? ` for ${co}` : ''}, matched to your requirement and verified for live availability.\n\nDo let me know your preferred options and I'll arrange site visits.\n\nWarm regards,\n${brokerName} · Spacehaat`;
-  }, [sendChannel, client, items.length, brokerName, brokerFirst]);
+  const sendMessage = useMemo(() => buildProposalShareMessage({
+    channel: sendChannel,
+    clientName: client.name,
+    clientCompany: client.company,
+    listingCount: items.length,
+    brokerName,
+    title: displayTitle,
+  }), [sendChannel, client.name, client.company, items.length, brokerName, displayTitle]);
 
   const persistProposal = useCallback(async () => {
     const isCreate = !editingProposalId;
@@ -123,12 +138,20 @@ export default function ProposalBuilderScreen() {
     setPdfLoading(true);
     try {
       const { pdf, proposal } = await persistProposal();
-      if (pdf?.url) {
-        await openProposalPdf(pdf.url, displayTitle, {
-          proposalId: proposal?.id || editingProposalId,
-        });
+      const shareResult = await shareProposalWithMessage({
+        message: sendMessage,
+        pdfUrl: pdf?.url || pdfMeta?.url,
+        title: displayTitle,
+        channel: sendChannel,
+        proposalId: proposal?.id || editingProposalId,
+        clientName: client.name,
+        clientCompany: client.company,
+        listingCount: items.length,
+        brokerName,
+      });
+      if (!shareResult.cancelled) {
+        Alert.alert('PDF ready', shareSuccessMessage({ channel: sendChannel, ...shareResult }));
       }
-      Alert.alert('PDF ready', 'Proposal saved and PDF opened.');
     } catch (e) {
       Alert.alert('Error', e?.message || 'Failed to generate PDF');
     } finally {
@@ -147,15 +170,18 @@ export default function ProposalBuilderScreen() {
         linkedLead?.id || null,
       );
       if (result?.pdf) setPdfMeta(result.pdf);
-      const pdfLine = result?.pdf?.url ? `\n\nPDF: ${result.pdf.url}` : '';
-      const fullMessage = `${sendMessage}${pdfLine}`;
 
+      // Share the PDF file with curated text — never a PDF URL alone.
       const shareResult = await shareProposalWithMessage({
-        message: fullMessage,
+        message: sendMessage,
         pdfUrl: result?.pdf?.url || pdfMeta?.url,
         title: displayTitle,
         channel: sendChannel,
         proposalId: result?.proposal?.id || editingProposalId,
+        clientName: client.name,
+        clientCompany: client.company,
+        listingCount: items.length,
+        brokerName,
       });
 
       setSent(true);
@@ -313,6 +339,11 @@ export default function ProposalBuilderScreen() {
             <Text style={styles.blockTitle}>Selected spaces</Text>
             <View style={styles.countPill}><Text style={styles.countPillText}>{items.length}</Text></View>
           </View>
+          {items.length < proposalIds.length ? (
+            <Text style={styles.missingHint}>
+              Loaded {items.length} of {proposalIds.length} spaces. Some may have been removed from inventory.
+            </Text>
+          ) : null}
           {items.map((l, i) => (
             <View key={l.id} style={styles.peItem}>
               <Text style={styles.peRank}>{i + 1}</Text>
@@ -356,14 +387,9 @@ export default function ProposalBuilderScreen() {
             <Text style={styles.blockTitle}>PDF export</Text>
           </View>
           <Text style={styles.pdfMeta}>{pdfPages} pages · ~{pdfSizeMb}</Text>
-          {pdfMeta?.url ? (
-            <Pressable
-              style={styles.linkBtn}
-              onPress={() => openProposalPdf(pdfMeta.url, displayTitle, { proposalId: editingProposalId })}
-            >
-              <Text style={styles.linkBtnText}>Open last generated PDF</Text>
-            </Pressable>
-          ) : null}
+          <Text style={styles.hint}>
+            Download / Send shares the PDF file with curated text — not a link.
+          </Text>
         </View>
 
         <View style={styles.actions}>
@@ -430,7 +456,7 @@ export default function ProposalBuilderScreen() {
             </View>
 
             <Text style={styles.sendHint}>
-              Saves the proposal, copies the message, then opens WhatsApp or the share sheet with the PDF attached.
+              Saves the proposal, then opens the share sheet with the PDF file attached. Curated message is copied so you can paste it in WhatsApp or Email.
             </Text>
 
             <ScrollView style={styles.msgScroll}>
@@ -452,7 +478,7 @@ export default function ProposalBuilderScreen() {
               {sending ? <ActivityIndicator color="#fff" /> : (
                 <>
                   <Ionicons name="share-outline" size={18} color="#fff" />
-                  <Text style={styles.actionPrimaryText}>Share message & save</Text>
+                  <Text style={styles.actionPrimaryText}>Share PDF & save</Text>
                 </>
               )}
             </Pressable>
@@ -510,6 +536,7 @@ const styles = StyleSheet.create({
   },
   textarea: { minHeight: 100, paddingTop: 12 },
   hint: { fontSize: 11, color: colors.faint, marginTop: 6 },
+  missingHint: { fontSize: 12, color: colors.muted, marginBottom: 10, lineHeight: 18 },
   ghostBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   ghostBtnText: { color: colors.brand, fontWeight: '600', fontSize: 12 },
   countPill: {

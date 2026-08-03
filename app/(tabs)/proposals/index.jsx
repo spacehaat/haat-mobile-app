@@ -146,7 +146,7 @@ export default function ProposalsListScreen() {
       const result = existingPath ? { sharePath: existingPath } : await mobileApi.createProposalShareLink(item.id);
       const url = clientPortalUrl(result.sharePath);
       await Clipboard.setStringAsync(url);
-      Alert.alert('Copied', 'Client portal link copied to clipboard.');
+      Alert.alert('Copied', `Client link copied:\n${url}`);
       refetch();
     } catch (e) {
       Alert.alert('Could not create link', e?.message || 'Try again.');

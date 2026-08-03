@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { mobileApi } from '../../../lib/api';
 import { clientPortalUrl } from '../../../lib/portalUrl';
-import { shareProposalPdfFile, openProposalPdf } from '../../../lib/shareProposal';
+import { shareProposalPdfFile, buildProposalShareMessage } from '../../../lib/shareProposal';
 import { useProposal } from '../../../context/ProposalContext';
 import { canSeeProposalBuilder } from '../../../lib/access';
 import { useAuth } from '../../../context/AuthContext';
@@ -24,7 +24,6 @@ export default function ProposalDetailScreen() {
   const showBuilder = canSeeProposalBuilder(user);
   const [loadingDraft, setLoadingDraft] = useState(false);
   const [sharing, setSharing] = useState(false);
-  const [opening, setOpening] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [linking, setLinking] = useState(false);
 
@@ -34,30 +33,40 @@ export default function ProposalDetailScreen() {
     enabled: Boolean(proposalId),
   });
 
-  const openPdf = async () => {
-    if (!proposal?.pdfUrl) {
-      Alert.alert('No PDF', 'This proposal does not have a PDF yet.');
-      return;
-    }
-    setOpening(true);
-    try {
-      await openProposalPdf(proposal.pdfUrl, proposal.title, { proposalId });
-    } catch (err) {
-      Alert.alert('Could not open PDF', err.message || 'Try Share PDF instead.');
-    } finally {
-      setOpening(false);
-    }
-  };
-
-  const sharePdf = async () => {
-    if (!proposal?.pdfUrl) {
+  const sharePdf = async (channel = 'whatsapp') => {
+    if (!proposal?.pdfUrl && !proposalId) {
       Alert.alert('No PDF', 'This proposal does not have a PDF yet.');
       return;
     }
     setSharing(true);
     try {
-      const result = await shareProposalPdfFile(proposal.pdfUrl, proposal.title, { proposalId });
-      if (result?.cancelled) return;
+      const message = buildProposalShareMessage({
+        channel,
+        clientName: proposal.client?.name,
+        clientCompany: proposal.client?.company,
+        listingCount: proposal.summary?.listingCount || proposal.listings?.length || 0,
+        brokerName: user?.name,
+        title: proposal.title,
+      });
+      const result = await shareProposalPdfFile(proposal.pdfUrl, proposal.title, {
+        proposalId,
+        message,
+        channel,
+        clientName: proposal.client?.name,
+        clientCompany: proposal.client?.company,
+        listingCount: proposal.summary?.listingCount || proposal.listings?.length || 0,
+        brokerName: user?.name,
+      });
+      if (result?.cancelled) {
+        Alert.alert('Copied', 'Message copied. Share the PDF when you’re ready.');
+        return;
+      }
+      Alert.alert(
+        'Share PDF',
+        channel === 'email'
+          ? 'Choose Email in the share sheet. Curated email text is on your clipboard — paste it into the body.'
+          : 'Choose WhatsApp in the share sheet. Curated message is on your clipboard — paste it with the PDF.',
+      );
     } catch (err) {
       Alert.alert('Share failed', err.message || 'Could not share PDF');
     } finally {
@@ -81,10 +90,12 @@ export default function ProposalDetailScreen() {
     setLinking(true);
     try {
       const existingPath = proposal?.shareToken ? `/p/${proposal.shareToken}` : '';
-      const result = existingPath ? { sharePath: existingPath } : await mobileApi.createProposalShareLink(proposalId);
+      const result = existingPath
+        ? { sharePath: existingPath }
+        : await mobileApi.createProposalShareLink(proposalId);
       const url = clientPortalUrl(result.sharePath);
       await Clipboard.setStringAsync(url);
-      Alert.alert('Copied', 'Client portal link copied to clipboard.');
+      Alert.alert('Copied', `Client link copied:\n${url}`);
       refetch();
     } catch (err) {
       Alert.alert('Could not create link', err.message || 'Try again.');
@@ -107,7 +118,8 @@ export default function ProposalDetailScreen() {
     ? `${proposal.client.name}${proposal.client.company ? ` · ${proposal.client.company}` : ''}`
     : (proposal.client?.company || 'No client set');
   const hasFeedback = (proposal.feedback?.total || 0) > 0;
-  const portalUrl = proposal.shareToken ? clientPortalUrl(proposal.shareToken) : null;
+  const portalUrl = proposal.shareToken ? clientPortalUrl(`/p/${proposal.shareToken}`) : null;
+  const hasPdf = Boolean(proposal.pdfUrl);
 
   return (
     <ScrollView
@@ -179,7 +191,7 @@ export default function ProposalDetailScreen() {
           Share a live link so your client can shortlist spaces, leave comments, and request visits.
         </Text>
         {portalUrl ? (
-          <Text style={styles.portalUrl} numberOfLines={2}>{portalUrl}</Text>
+          <Text style={styles.portalUrl} selectable>{portalUrl}</Text>
         ) : null}
         {hasFeedback ? (
           <View style={styles.feedbackRow}>
@@ -224,33 +236,40 @@ export default function ProposalDetailScreen() {
             )}
           </Pressable>
         ) : null}
-        <Pressable
-          style={[styles.btn, styles.btnOutline, (!proposal.pdfUrl || opening) && styles.btnOff]}
-          disabled={!proposal.pdfUrl || opening}
-          onPress={openPdf}
-        >
-          {opening ? (
-            <ActivityIndicator color={colors.ink} />
-          ) : (
-            <>
-              <Ionicons name="open-outline" size={18} color={colors.ink} />
-              <Text style={styles.btnText}>Open PDF</Text>
-            </>
-          )}
-        </Pressable>
-        {proposal.pdfUrl ? (
-          <Pressable style={[styles.btn, sharing && styles.btnOff]} disabled={sharing} onPress={sharePdf}>
-            {sharing ? (
-              <ActivityIndicator color={colors.ink} />
-            ) : (
-              <>
-                <Ionicons name="share-outline" size={18} color={colors.ink} />
-                <Text style={styles.btnText}>Share PDF</Text>
-              </>
-            )}
-          </Pressable>
+
+        {hasPdf ? (
+          <>
+            <Pressable
+              style={[styles.btn, styles.btnWhatsApp, sharing && styles.btnOff]}
+              disabled={sharing}
+              onPress={() => sharePdf('whatsapp')}
+            >
+              {sharing ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="logo-whatsapp" size={18} color="#fff" />
+                  <Text style={styles.btnPrimaryText}>Share on WhatsApp</Text>
+                </>
+              )}
+            </Pressable>
+            <Pressable
+              style={[styles.btn, styles.btnOutline, sharing && styles.btnOff]}
+              disabled={sharing}
+              onPress={() => sharePdf('email')}
+            >
+              {sharing ? (
+                <ActivityIndicator color={colors.ink} />
+              ) : (
+                <>
+                  <Ionicons name="mail-outline" size={18} color={colors.ink} />
+                  <Text style={styles.btnText}>Share via Email</Text>
+                </>
+              )}
+            </Pressable>
+          </>
         ) : (
-          <Text style={styles.noPdf}>PDF not generated yet</Text>
+          <Text style={styles.noPdf}>PDF not generated yet — open Edit in builder to create one.</Text>
         )}
       </View>
 
@@ -313,6 +332,7 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: colors.border,
   },
   btnPrimary: { backgroundColor: colors.brand, borderColor: colors.brand },
+  btnWhatsApp: { backgroundColor: '#25D366', borderColor: '#25D366' },
   btnOutline: { backgroundColor: colors.surface },
   btnPrimaryText: { color: '#fff', fontWeight: '700', fontSize: 15 },
   btnText: { color: colors.ink, fontWeight: '700', fontSize: 15 },
