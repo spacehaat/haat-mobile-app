@@ -21,7 +21,7 @@ import StageBadge from '../../../components/ui/StageBadge';
 import LoadingScreen from '../../../components/ui/LoadingScreen';
 import ConfirmDialog from '../../../components/ui/ConfirmDialog';
 import { colors } from '../../../constants/theme';
-import { openWhatsApp } from '../../../lib/whatsapp';
+import { leadFollowUpWhatsAppMessage, openWhatsApp } from '../../../lib/whatsapp';
 import { initials } from '@spacehaat/utils';
 
 export default function LeadDetailScreen() {
@@ -170,8 +170,13 @@ export default function LeadDetailScreen() {
   };
 
   const openWhatsAppChat = () => {
-    const greeting = lead.name ? `Hi ${lead.name.split(' ')[0]}, ` : 'Hi, ';
-    openWhatsApp(lead.contact, `${greeting}following up on your workspace enquiry with Spacehaat.`);
+    openWhatsApp(
+      lead.contact,
+      leadFollowUpWhatsAppMessage({
+        clientName: lead.name || lead.company,
+        memberName: user?.name,
+      }),
+    );
   };
 
   const submitNote = () => {
