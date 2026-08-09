@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View, Text, TextInput, ScrollView, Pressable, StyleSheet,
   ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
@@ -6,8 +6,11 @@ import {
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { mobileApi } from '../../../lib/api';
+import { useAuth } from '../../../context/AuthContext';
+import { canAssignLeads } from '../../../lib/access';
 import { colors } from '../../../constants/theme';
-import { SAMPLE_ENQUIRY } from '../../../constants/match';
+import { SAMPLE_ENQUIRY, CITIES } from '../../../constants/match';
+import AssigneePicker from '../../../components/leads/AssigneePicker';
 
 const PARSE_LABEL = { openai: 'AI parsed', rules: 'Smart parsed' };
 
@@ -15,19 +18,47 @@ function emptyForm() {
   return {
     name: '', contact: '', email: '', company: '',
     city: 'Bangalore', microlocation: '', seats: '',
-    budget: '', moveIn: '', rawEnquiry: '',
+    budget: '', moveIn: '', rawEnquiry: '', assigneeId: '',
   };
 }
 
 export default function NewLeadScreen() {
+  const { user } = useAuth();
+  const canAssign = canAssignLeads(user);
   const [enquiry, setEnquiry] = useState(SAMPLE_ENQUIRY);
   const [form, setForm] = useState(emptyForm());
   const [parseSource, setParseSource] = useState(null);
   const [isParsing, setIsParsing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [assigneeOptions, setAssigneeOptions] = useState([]);
+  const [suggestedAssigneeId, setSuggestedAssigneeId] = useState('');
+  const [loadingAssignees, setLoadingAssignees] = useState(false);
 
   const setField = (key, value) => setForm((f) => ({ ...f, [key]: value }));
+
+  useEffect(() => {
+    if (!canAssign || !showForm || !form.city) return;
+    let cancelled = false;
+    setLoadingAssignees(true);
+    mobileApi.listLeadAssignees(form.city)
+      .then((data) => {
+        if (cancelled) return;
+        setAssigneeOptions(data.items || []);
+        setSuggestedAssigneeId(data.suggestedId || '');
+        // Clear selection if previously chosen user is no longer in this city
+        if (form.assigneeId && !(data.items || []).some((u) => u.id === form.assigneeId)) {
+          setForm((f) => ({ ...f, assigneeId: '' }));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setAssigneeOptions([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingAssignees(false);
+      });
+    return () => { cancelled = true; };
+  }, [canAssign, showForm, form.city]);
 
   const parseEnquiry = async () => {
     if (!enquiry.trim()) return;
@@ -46,6 +77,7 @@ export default function NewLeadScreen() {
         budget: fields.budget ? String(fields.budget) : '',
         moveIn: fields.moveIn || '',
         rawEnquiry: enquiry.trim(),
+        assigneeId: '',
       });
       setParseSource(data.source);
       setShowForm(true);
@@ -63,7 +95,7 @@ export default function NewLeadScreen() {
     }
     setIsSaving(true);
     try {
-      const lead = await mobileApi.createLead({
+      const payload = {
         source: parseSource === 'openai' || parseSource === 'rules' ? 'whatsapp' : 'manual',
         name: form.name.trim(),
         contact: form.contact.trim(),
@@ -76,7 +108,11 @@ export default function NewLeadScreen() {
         moveIn: form.moveIn.trim(),
         rawEnquiry: form.rawEnquiry || enquiry.trim(),
         stage: 'new',
-      });
+      };
+      if (canAssign && form.assigneeId) {
+        payload.assigneeId = form.assigneeId;
+      }
+      const lead = await mobileApi.createLead(payload);
       Alert.alert('Lead created', `${lead.displayTitle || lead.name || 'Lead'} added.`, [
         { text: 'View lead', onPress: () => router.replace(`/(tabs)/leads/${lead.id}`) },
         { text: 'Back to list', onPress: () => router.back() },
@@ -136,7 +172,39 @@ export default function NewLeadScreen() {
               <Text style={styles.lab}>Lead details</Text>
               {[
                 ['Name', 'name'], ['Company', 'company'], ['Phone', 'contact'],
-                ['Email', 'email'], ['City', 'city'], ['Microlocation', 'microlocation'],
+                ['Email', 'email'],
+              ].map(([label, key]) => (
+                <View key={key} style={styles.field}>
+                  <Text style={styles.fieldLab}>{label}</Text>
+                  <TextInput
+                    style={styles.inp}
+                    value={form[key]}
+                    onChangeText={(v) => setField(key, v)}
+                    autoCapitalize={key === 'email' ? 'none' : 'sentences'}
+                  />
+                </View>
+              ))}
+
+              <View style={styles.field}>
+                <Text style={styles.fieldLab}>City</Text>
+                <View style={styles.chips}>
+                  {CITIES.map((c) => {
+                    const on = form.city === c;
+                    return (
+                      <Pressable
+                        key={c}
+                        style={[styles.chip, on && styles.chipOn]}
+                        onPress={() => setField('city', c)}
+                      >
+                        <Text style={[styles.chipText, on && styles.chipTextOn]}>{c}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+
+              {[
+                ['Microlocation', 'microlocation'],
                 ['Seats', 'seats'], ['Budget/seat', 'budget'], ['Move-in', 'moveIn'],
               ].map(([label, key]) => (
                 <View key={key} style={styles.field}>
@@ -146,10 +214,20 @@ export default function NewLeadScreen() {
                     value={form[key]}
                     onChangeText={(v) => setField(key, v)}
                     keyboardType={key === 'seats' || key === 'budget' ? 'numeric' : 'default'}
-                    autoCapitalize={key === 'email' ? 'none' : 'sentences'}
                   />
                 </View>
               ))}
+
+              {canAssign ? (
+                <AssigneePicker
+                  options={assigneeOptions}
+                  value={form.assigneeId}
+                  suggestedId={suggestedAssigneeId}
+                  loading={loadingAssignees}
+                  onChange={(id) => setField('assigneeId', id)}
+                />
+              ) : null}
+
               <Pressable
                 style={[styles.primaryBtn, styles.saveBtn, busy && styles.btnOff]}
                 disabled={busy}
@@ -197,5 +275,13 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: colors.border, borderRadius: 10,
     paddingVertical: 10, paddingHorizontal: 12, fontSize: 15, color: colors.ink, backgroundColor: colors.surface2,
   },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: {
+    paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999,
+    backgroundColor: colors.surface2, borderWidth: 1, borderColor: colors.border,
+  },
+  chipOn: { backgroundColor: colors.ink, borderColor: colors.ink },
+  chipText: { fontSize: 12, fontWeight: '600', color: colors.ink },
+  chipTextOn: { color: '#fff' },
   saveBtn: { marginTop: 8 },
 });

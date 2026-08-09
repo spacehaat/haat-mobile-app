@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, Pressable, StyleSheet, Linking, TextInput,
   ActivityIndicator, RefreshControl, Alert, KeyboardAvoidingView, Platform,
@@ -9,12 +9,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { mobileApi } from '../../../lib/api';
 import { useAuth } from '../../../context/AuthContext';
-import { isAdmin } from '../../../lib/access';
+import { canAssignLeads, isAdmin } from '../../../lib/access';
 import { runOfflineAction } from '../../../lib/offlineQueue';
 import { formatDate, isOverdue, leadSubtitle } from '../../../lib/format';
 import { formatReminderDateTime, reminderStatus, activeReminderDueAt } from '@spacehaat/utils';
 import LeadReminderPanel from '../../../components/leads/LeadReminderPanel';
 import CmbReminderModal from '../../../components/leads/CmbReminderModal';
+import AssigneePicker from '../../../components/leads/AssigneePicker';
 import { STAGES, STAGE_LABEL } from '../../../constants/leads';
 import StageBadge from '../../../components/ui/StageBadge';
 import LoadingScreen from '../../../components/ui/LoadingScreen';
@@ -28,11 +29,16 @@ export default function LeadDetailScreen() {
   const leadId = Array.isArray(id) ? id[0] : id;
   const { user } = useAuth();
   const admin = isAdmin(user);
+  const canAssign = canAssignLeads(user);
   const queryClient = useQueryClient();
   const insets = useSafeAreaInsets();
   const [noteText, setNoteText] = useState('');
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [cmbModalOpen, setCmbModalOpen] = useState(false);
+  const [assigneeOptions, setAssigneeOptions] = useState([]);
+  const [suggestedAssigneeId, setSuggestedAssigneeId] = useState('');
+  const [loadingAssignees, setLoadingAssignees] = useState(false);
+  const [savingAssignee, setSavingAssignee] = useState(false);
 
   const { data: lead, isLoading, refetch, isRefetching, error } = useQuery({
     queryKey: ['lead', leadId],
@@ -112,6 +118,40 @@ export default function LeadDetailScreen() {
     onError: (err) => Alert.alert('Could not set reminder', err.message || 'Try again'),
   });
 
+  useEffect(() => {
+    if (!canAssign || !lead?.city) return;
+    let cancelled = false;
+    setLoadingAssignees(true);
+    mobileApi.listLeadAssignees(lead.city)
+      .then((data) => {
+        if (cancelled) return;
+        setAssigneeOptions(data.items || []);
+        setSuggestedAssigneeId(data.suggestedId || '');
+      })
+      .catch(() => {
+        if (!cancelled) setAssigneeOptions([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingAssignees(false);
+      });
+    return () => { cancelled = true; };
+  }, [canAssign, lead?.city]);
+
+  const updateAssignee = async (assigneeId) => {
+    if (!canAssign || savingAssignee) return;
+    if ((lead.assigneeId || '') === (assigneeId || '')) return;
+    setSavingAssignee(true);
+    try {
+      const updated = await mobileApi.updateLead(leadId, { assigneeId: assigneeId || null });
+      queryClient.setQueryData(['lead', leadId], updated);
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+    } catch (err) {
+      Alert.alert('Could not update assignee', err.message || 'Try again');
+    } finally {
+      setSavingAssignee(false);
+    }
+  };
+
   if (isLoading) return <LoadingScreen label="Loading lead…" />;
   if (error || !lead) {
     return (
@@ -175,6 +215,24 @@ export default function LeadDetailScreen() {
         <View style={styles.badges}>
           <StageBadge stage={lead.stage} />
           <Text style={styles.date}><Ionicons name="calendar-outline" size={13} color={colors.muted} /> {formatDate(lead.leadDate)}</Text>
+        </View>
+
+        <View style={styles.panel}>
+          <Text style={styles.panelTitle}>Assigned to</Text>
+          {canAssign ? (
+            <>
+              <AssigneePicker
+                options={assigneeOptions}
+                value={lead.assigneeId || ''}
+                suggestedId={suggestedAssigneeId}
+                loading={loadingAssignees || savingAssignee}
+                onChange={updateAssignee}
+                label="Owner"
+              />
+            </>
+          ) : (
+            <Text style={styles.assigneeName}>{lead.assigneeName || '—'}</Text>
+          )}
         </View>
 
         <View style={styles.kpis}>
@@ -376,6 +434,7 @@ const styles = StyleSheet.create({
     color: colors.faint, marginBottom: 4,
   },
   panelHint: { fontSize: 12, color: colors.muted, marginBottom: 10 },
+  assigneeName: { fontSize: 15, fontWeight: '700', color: colors.ink, marginTop: 4 },
   stageRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingRight: 8 },
   stagePill: {
     minHeight: 38,

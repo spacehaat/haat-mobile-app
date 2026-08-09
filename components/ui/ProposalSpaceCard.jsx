@@ -3,6 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { inr } from '@spacehaat/utils';
 import FreshBadge from './FreshBadge';
 import { allGalleryPhotos, clientSafeListing } from '../../lib/listingHelpers';
+import { DEFAULT_PROPOSAL_AMENITIES, PROPOSAL_AVAILABLE_NOW } from '../../constants/proposalDefaults';
 import { colors } from '../../constants/theme';
 
 export default function ProposalSpaceCard({ listing, index, total }) {
@@ -39,21 +40,13 @@ export default function ProposalSpaceCard({ listing, index, total }) {
       ) : null}
 
       <View style={styles.metrics}>
-        <View style={styles.metric}>
-          <Text style={styles.metricL}>Capacity</Text>
-          <Text style={styles.metricV}>{listing.seats} seats</Text>
-        </View>
         <View style={[styles.metric, styles.metricHi]}>
           <Text style={styles.metricL}>Price / seat</Text>
           <Text style={styles.metricV}>{inr(listing.price)}/mo</Text>
         </View>
         <View style={styles.metric}>
-          <Text style={styles.metricL}>Carpet area</Text>
-          <Text style={styles.metricV}>{Number(safe.carpet || 0).toLocaleString('en-IN')} sq ft</Text>
-        </View>
-        <View style={styles.metric}>
           <Text style={styles.metricL}>Availability</Text>
-          <Text style={styles.metricV}>{listing.avail || 'Available now'}</Text>
+          <Text style={styles.metricV}>{PROPOSAL_AVAILABLE_NOW}</Text>
         </View>
       </View>
 
@@ -84,16 +77,14 @@ export default function ProposalSpaceCard({ listing, index, total }) {
         ) : null}
       </View>
 
-      {(listing.amenities || []).length > 0 ? (
-        <View style={styles.amenRow}>
-          {listing.amenities.map((a) => (
-            <View key={a} style={styles.amenChip}>
-              <Ionicons name="checkmark" size={10} color={colors.success} />
-              <Text style={styles.amenText}>{a}</Text>
-            </View>
-          ))}
-        </View>
-      ) : null}
+      <View style={styles.amenRow}>
+        {DEFAULT_PROPOSAL_AMENITIES.map((a) => (
+          <View key={a} style={styles.amenChip}>
+            <Ionicons name="checkmark" size={10} color={colors.success} />
+            <Text style={styles.amenText}>{a}</Text>
+          </View>
+        ))}
+      </View>
     </View>
   );
 }
@@ -115,9 +106,9 @@ const styles = StyleSheet.create({
   galCell: { width: '48%', flexGrow: 1 },
   galImg: { width: '100%', height: 80, borderRadius: 8, backgroundColor: colors.surface2 },
   galLbl: { fontSize: 10, color: colors.muted, marginTop: 4, fontWeight: '600' },
-  metrics: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 },
+  metrics: { flexDirection: 'row', gap: 8, marginBottom: 10 },
   metric: {
-    width: '47%', flexGrow: 1, backgroundColor: colors.surface2, borderRadius: 10, padding: 10,
+    flex: 1, backgroundColor: colors.surface2, borderRadius: 10, padding: 10,
   },
   metricHi: { backgroundColor: colors.brandSoft },
   metricL: { fontSize: 10, color: colors.muted, fontWeight: '600', textTransform: 'uppercase' },
