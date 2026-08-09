@@ -34,12 +34,24 @@ export function createApiClient(options = {}) {
       if (token) headers.authorization = `Bearer ${token}`;
     }
 
-    const res = await fetch(`${baseUrl}${path}`, {
-      method,
-      headers: Object.keys(headers).length ? headers : undefined,
-      body: formData ? body : (body ? JSON.stringify(body) : undefined),
-      credentials: getAccessToken ? 'omit' : credentials,
-    });
+    let res;
+    try {
+      res = await fetch(`${baseUrl}${path}`, {
+        method,
+        headers: Object.keys(headers).length ? headers : undefined,
+        body: formData ? body : (body ? JSON.stringify(body) : undefined),
+        credentials: getAccessToken ? 'omit' : credentials,
+      });
+    } catch (networkErr) {
+      const host = baseUrl || '(relative)';
+      const err = new Error(
+        `Cannot reach API at ${host}. Check your connection and EXPO_PUBLIC_API_URL.`,
+      );
+      err.status = 0;
+      err.code = 'NETWORK_ERROR';
+      err.cause = networkErr;
+      throw err;
+    }
 
     const data = await res.json().catch(() => ({}));
 

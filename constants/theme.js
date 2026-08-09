@@ -12,4 +12,13 @@ export const colors = {
   success: '#2E9E5B',
 };
 
-export const apiBaseUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8080';
+const DEFAULT_API_URL = 'https://haat-api.spacehaat.com';
+
+/** Trim trailing slash; never ship a blank/localhost URL to devices. */
+export const apiBaseUrl = (() => {
+  const raw = String(process.env.EXPO_PUBLIC_API_URL || '').trim().replace(/\/$/, '');
+  if (!raw) return DEFAULT_API_URL;
+  // Expo Go on a physical device cannot reach the host's localhost.
+  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/i.test(raw)) return DEFAULT_API_URL;
+  return raw;
+})();
