@@ -22,6 +22,7 @@ import LoadingScreen from '../../../components/ui/LoadingScreen';
 import ConfirmDialog from '../../../components/ui/ConfirmDialog';
 import { colors } from '../../../constants/theme';
 import { leadFollowUpWhatsAppMessage, openWhatsApp } from '../../../lib/whatsapp';
+import LeadRegisterEmailModal from '../../../components/leads/LeadRegisterEmailModal';
 import { initials } from '@spacehaat/utils';
 
 export default function LeadDetailScreen() {
@@ -35,6 +36,7 @@ export default function LeadDetailScreen() {
   const [noteText, setNoteText] = useState('');
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [cmbModalOpen, setCmbModalOpen] = useState(false);
+  const [registerEmailOpen, setRegisterEmailOpen] = useState(false);
   const [assigneeOptions, setAssigneeOptions] = useState([]);
   const [suggestedAssigneeId, setSuggestedAssigneeId] = useState('');
   const [loadingAssignees, setLoadingAssignees] = useState(false);
@@ -319,7 +321,15 @@ export default function LeadDetailScreen() {
             <Ionicons name="chevron-forward" size={16} color={colors.faint} />
           </Pressable>
         ) : null}
-          {!lead.email && !lead.contact ? <Text style={styles.muted}>No contact details</Text> : null}
+          <Pressable style={styles.contactRow} onPress={() => setRegisterEmailOpen(true)}>
+            <Ionicons name="document-text-outline" size={18} color={colors.brand} />
+            <View style={styles.contactBody}>
+              <Text style={styles.contactLab}>Operator</Text>
+              <Text style={styles.contactVal}>Register lead by email</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={colors.faint} />
+          </Pressable>
+          {!lead.email && !lead.contact ? <Text style={styles.muted}>No client contact details</Text> : null}
         </View>
 
         {(lead.city || lead.seats || lead.seatRange || lead.interestedIn?.length) ? (
@@ -394,6 +404,14 @@ export default function LeadDetailScreen() {
         onClose={() => { if (!stageMutation.isPending) setCmbModalOpen(false); }}
         onSkip={() => applyStage('cmb', null, { force: true })}
         onSave={(reminder) => stageMutation.mutate({ stage: 'cmb', reminder })}
+      />
+
+      <LeadRegisterEmailModal
+        visible={registerEmailOpen}
+        onClose={() => setRegisterEmailOpen(false)}
+        lead={lead}
+        memberName={user?.name}
+        memberPhone={user?.phone}
       />
     </KeyboardAvoidingView>
   );
