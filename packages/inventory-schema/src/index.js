@@ -7,7 +7,7 @@ export const AMENITIES = [
 
 export const BUILDING_TYPES = ['IT park', 'Standalone', 'Mixed-use'];
 
-export const LISTING_CITIES = ['Gurugram', 'Noida', 'Delhi', 'Bangalore', 'Mumbai', 'Pune', 'Hyderabad', 'Ahmedabad', 'Jaipur', 'Chennai', 'Lucknow', 'Indore'];
+export const LISTING_CITIES = ['Gurugram', 'Noida', 'Delhi', 'New Delhi', 'Bangalore', 'Mumbai', 'Pune', 'Hyderabad', 'Ahmedabad', 'Jaipur', 'Chennai', 'Lucknow', 'Indore'];
 
 /** Six-step wizard schema — keep in sync with web InventoryWizard. */
 export const INV_SCHEMA = [
