@@ -16,6 +16,7 @@ export {
   canManageInventory,
   canCreateLead,
   cityScope,
+  spaceTypeScope,
 } from './core.js';
 
 export {

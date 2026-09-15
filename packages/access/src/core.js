@@ -32,3 +32,10 @@ export function cityScope(user) {
   const cities = (user.cities || []).filter(Boolean);
   return cities.length ? cities : [];
 }
+
+/** Space-type scope for members. Empty/unset = no restriction (back-compat). */
+export function spaceTypeScope(user) {
+  if (!user || user.role === 'admin') return null;
+  const types = (user.spaceTypes || []).filter(Boolean);
+  return types.length ? types : null;
+}

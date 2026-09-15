@@ -7,6 +7,7 @@
  * @property {string} email
  * @property {UserRole} role
  * @property {string[]} cities
+ * @property {string[]} [spaceTypes]
  * @property {string[]} permissions
  * @property {boolean} [active]
  */
@@ -43,6 +44,7 @@
  * @property {string} [email]
  * @property {string} [company]
  * @property {string[]} [interestedIn]
+ * @property {'CW' | 'VO' | 'CL' | 'OS'} [spaceType]
  * @property {string} [city]
  * @property {string} [microlocation]
  * @property {number | string} [seats]

@@ -17,6 +17,7 @@ import LeadReminderPanel from '../../../components/leads/LeadReminderPanel';
 import CmbReminderModal from '../../../components/leads/CmbReminderModal';
 import AssigneePicker from '../../../components/leads/AssigneePicker';
 import { STAGES, STAGE_LABEL } from '../../../constants/leads';
+import { DEFAULT_LEAD_SPACE_TYPE, LEAD_SPACE_TYPES, spaceTypeLabel } from '../../../constants/spaceTypes';
 import StageBadge from '../../../components/ui/StageBadge';
 import LoadingScreen from '../../../components/ui/LoadingScreen';
 import ConfirmDialog from '../../../components/ui/ConfirmDialog';
@@ -41,6 +42,7 @@ export default function LeadDetailScreen() {
   const [suggestedAssigneeId, setSuggestedAssigneeId] = useState('');
   const [loadingAssignees, setLoadingAssignees] = useState(false);
   const [savingAssignee, setSavingAssignee] = useState(false);
+  const [savingSpaceType, setSavingSpaceType] = useState(false);
 
   const { data: lead, isLoading, refetch, isRefetching, error } = useQuery({
     queryKey: ['lead', leadId],
@@ -124,7 +126,7 @@ export default function LeadDetailScreen() {
     if (!canAssign || !lead?.city) return;
     let cancelled = false;
     setLoadingAssignees(true);
-    mobileApi.listLeadAssignees(lead.city)
+    mobileApi.listLeadAssignees(lead.city, lead.spaceType || DEFAULT_LEAD_SPACE_TYPE)
       .then((data) => {
         if (cancelled) return;
         setAssigneeOptions(data.items || []);
@@ -137,7 +139,22 @@ export default function LeadDetailScreen() {
         if (!cancelled) setLoadingAssignees(false);
       });
     return () => { cancelled = true; };
-  }, [canAssign, lead?.city]);
+  }, [canAssign, lead?.city, lead?.spaceType]);
+
+  const updateSpaceType = async (spaceType) => {
+    if (savingSpaceType || !spaceType) return;
+    if ((lead.spaceType || DEFAULT_LEAD_SPACE_TYPE) === spaceType) return;
+    setSavingSpaceType(true);
+    try {
+      const updated = await mobileApi.updateLead(leadId, { spaceType });
+      queryClient.setQueryData(['lead', leadId], updated);
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+    } catch (err) {
+      Alert.alert('Could not update space type', err.message || 'Try again');
+    } finally {
+      setSavingSpaceType(false);
+    }
+  };
 
   const updateAssignee = async (assigneeId) => {
     if (!canAssign || savingAssignee) return;
@@ -332,9 +349,31 @@ export default function LeadDetailScreen() {
           {!lead.email && !lead.contact ? <Text style={styles.muted}>No client contact details</Text> : null}
         </View>
 
+        <View style={styles.panel}>
+          <Text style={styles.panelTitle}>Space type</Text>
+          <View style={styles.spaceTypeRow}>
+            {LEAD_SPACE_TYPES.map((t) => {
+              const on = (lead.spaceType || DEFAULT_LEAD_SPACE_TYPE) === t.value;
+              return (
+                <Pressable
+                  key={t.value}
+                  style={[styles.stagePill, on && styles.stagePillOn, savingSpaceType && styles.noteBtnOff]}
+                  disabled={savingSpaceType}
+                  onPress={() => updateSpaceType(t.value)}
+                >
+                  <Text style={[styles.stagePillText, on && styles.stagePillTextOn]}>
+                    {t.value} · {t.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
         {(lead.city || lead.seats || lead.seatRange || lead.interestedIn?.length) ? (
           <View style={styles.panel}>
             <Text style={styles.panelTitle}>Requirement</Text>
+            <Text style={styles.reqLine}>🏢 {spaceTypeLabel(lead.spaceType)}</Text>
             {lead.interestedIn?.map((t) => <Text key={t} style={styles.reqLine}>• {t}</Text>)}
             {lead.city ? <Text style={styles.reqLine}>📍 {lead.city}{lead.microlocation ? ` · ${lead.microlocation}` : ''}</Text> : null}
             {lead.seatRange ? <Text style={styles.reqLine}>{lead.seatRange} seats</Text> : (lead.seats ? <Text style={styles.reqLine}>{lead.seats} seats</Text> : null)}
@@ -459,6 +498,7 @@ const styles = StyleSheet.create({
   panelHint: { fontSize: 12, color: colors.muted, marginBottom: 10 },
   assigneeName: { fontSize: 15, fontWeight: '700', color: colors.ink, marginTop: 4 },
   stageRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingRight: 8 },
+  spaceTypeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6 },
   stagePill: {
     minHeight: 38,
     paddingHorizontal: 14,

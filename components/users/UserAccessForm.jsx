@@ -8,6 +8,7 @@ import { mobileApi } from '../../lib/api';
 import {
   ASSIGNABLE_CITIES, PERM_LABELS, permissionLabel,
 } from '../../lib/access';
+import { LEAD_SPACE_TYPES } from '../../constants/spaceTypes';
 import { colors } from '../../constants/theme';
 import ModalSafeArea from '../ui/ModalSafeArea';
 
@@ -26,6 +27,7 @@ const EMPTY_FORM = {
   password: '',
   role: 'member',
   cities: [],
+  spaceTypes: ['CW'],
   permissions: [],
 };
 
@@ -52,6 +54,7 @@ export default function UserAccessForm({
         password: '',
         role: editing.role || 'member',
         cities: editing.cities || [],
+        spaceTypes: editing.spaceTypes || [],
         permissions: editing.permissions || [],
       });
     } else {
@@ -81,6 +84,7 @@ export default function UserAccessForm({
     if (!editing && form.password.length < 8) return setError('Password must be at least 8 characters');
     if (editing && form.password && form.password.length < 8) return setError('Password must be at least 8 characters');
     if (form.role === 'member' && !form.cities.length) return setError('Assign at least one city to a member');
+    if (form.role === 'member' && !form.spaceTypes.length) return setError('Assign at least one space type to a member');
 
     setSaving(true);
     try {
@@ -91,6 +95,7 @@ export default function UserAccessForm({
           gender: form.gender,
           role: form.role,
           cities: form.cities,
+          spaceTypes: form.spaceTypes,
           permissions: form.permissions,
         };
         if (form.password) payload.password = form.password;
@@ -104,6 +109,7 @@ export default function UserAccessForm({
           password: form.password,
           role: form.role,
           cities: form.cities,
+          spaceTypes: form.spaceTypes,
           permissions: form.permissions,
         });
       }
@@ -211,6 +217,19 @@ export default function UserAccessForm({
                 </View>
               </Field>
 
+              <Field label="Space types — member can access these lead types">
+                <View style={styles.chipRow}>
+                  {LEAD_SPACE_TYPES.map((t) => (
+                    <Chip
+                      key={t.value}
+                      label={`${t.label} (${t.value})`}
+                      active={form.spaceTypes.includes(t.value)}
+                      onPress={() => toggleInArray('spaceTypes', t.value)}
+                    />
+                  ))}
+                </View>
+              </Field>
+
               <Field label="Permissions">
                 <View style={styles.chipRow}>
                   {permList.map((perm) => (
@@ -227,7 +246,7 @@ export default function UserAccessForm({
           ) : (
             <View style={styles.adminNote}>
               <Ionicons name="shield-checkmark-outline" size={18} color={colors.brand} />
-              <Text style={styles.adminNoteText}>Admins have full access to every city and section.</Text>
+              <Text style={styles.adminNoteText}>Admins have full access to every city, space type, and section.</Text>
             </View>
           )}
 

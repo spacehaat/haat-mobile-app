@@ -10,6 +10,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { canAssignLeads } from '../../../lib/access';
 import { colors } from '../../../constants/theme';
 import { SAMPLE_ENQUIRY, CITIES } from '../../../constants/match';
+import { DEFAULT_LEAD_SPACE_TYPE, LEAD_SPACE_TYPES } from '../../../constants/spaceTypes';
 import AssigneePicker from '../../../components/leads/AssigneePicker';
 
 const PARSE_LABEL = { openai: 'AI parsed', rules: 'Smart parsed' };
@@ -17,6 +18,7 @@ const PARSE_LABEL = { openai: 'AI parsed', rules: 'Smart parsed' };
 function emptyForm() {
   return {
     name: '', contact: '', email: '', company: '',
+    spaceType: DEFAULT_LEAD_SPACE_TYPE,
     city: 'Bangalore', microlocation: '', seats: '',
     budget: '', moveIn: '', rawEnquiry: '', assigneeId: '',
   };
@@ -41,7 +43,7 @@ export default function NewLeadScreen() {
     if (!canAssign || !showForm || !form.city) return;
     let cancelled = false;
     setLoadingAssignees(true);
-    mobileApi.listLeadAssignees(form.city)
+    mobileApi.listLeadAssignees(form.city, form.spaceType)
       .then((data) => {
         if (cancelled) return;
         setAssigneeOptions(data.items || []);
@@ -58,7 +60,7 @@ export default function NewLeadScreen() {
         if (!cancelled) setLoadingAssignees(false);
       });
     return () => { cancelled = true; };
-  }, [canAssign, showForm, form.city]);
+  }, [canAssign, showForm, form.city, form.spaceType]);
 
   const parseEnquiry = async () => {
     if (!enquiry.trim()) return;
@@ -71,6 +73,7 @@ export default function NewLeadScreen() {
         contact: fields.contact || fields.phone || '',
         email: fields.email || '',
         company: fields.company || '',
+        spaceType: DEFAULT_LEAD_SPACE_TYPE,
         city: fields.city || 'Bangalore',
         microlocation: fields.microlocation || fields.locality || '',
         seats: fields.seats ? String(fields.seats) : '',
@@ -101,6 +104,7 @@ export default function NewLeadScreen() {
         contact: form.contact.trim(),
         email: form.email.trim(),
         company: form.company.trim(),
+        spaceType: form.spaceType || DEFAULT_LEAD_SPACE_TYPE,
         city: form.city.trim(),
         microlocation: form.microlocation.trim(),
         seats: form.seats ? Number(form.seats) : 0,
@@ -184,6 +188,26 @@ export default function NewLeadScreen() {
                   />
                 </View>
               ))}
+
+              <View style={styles.field}>
+                <Text style={styles.fieldLab}>Space type</Text>
+                <View style={styles.chips}>
+                  {LEAD_SPACE_TYPES.map((t) => {
+                    const on = form.spaceType === t.value;
+                    return (
+                      <Pressable
+                        key={t.value}
+                        style={[styles.chip, on && styles.chipOn]}
+                        onPress={() => setField('spaceType', t.value)}
+                      >
+                        <Text style={[styles.chipText, on && styles.chipTextOn]}>
+                          {t.label} ({t.value})
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
 
               <View style={styles.field}>
                 <Text style={styles.fieldLab}>City</Text>

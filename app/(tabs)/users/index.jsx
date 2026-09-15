@@ -111,6 +111,10 @@ export default function UsersScreen() {
                   {u.role === 'admin' ? 'All cities' : (u.cities?.join(', ') || '—')}
                 </Text>
                 <Text style={styles.metaLine}>
+                  <Text style={styles.metaLabel}>Space types: </Text>
+                  {u.role === 'admin' ? 'All types' : (u.spaceTypes?.length ? u.spaceTypes.join(', ') : '—')}
+                </Text>
+                <Text style={styles.metaLine}>
                   <Text style={styles.metaLabel}>Access: </Text>
                   {u.role === 'admin'
                     ? 'Full access'

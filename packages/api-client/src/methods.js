@@ -203,6 +203,7 @@ export function createApiMethods(request) {
       stage = '',
       status = '',
       city = '',
+      spaceType = '',
       assignee = '',
       source = '',
       dateFrom = '',
@@ -216,6 +217,7 @@ export function createApiMethods(request) {
       const stageFilter = stage || status;
       if (stageFilter) params.set('stage', stageFilter);
       if (city && city !== 'All cities') params.set('city', city);
+      if (spaceType) params.set('spaceType', spaceType);
       if (assignee) params.set('assignee', assignee);
       if (source) params.set('source', source);
       if (dateFrom) params.set('dateFrom', dateFrom);
@@ -224,9 +226,10 @@ export function createApiMethods(request) {
       return request(`/api/v1/leads?${params}`);
     },
 
-    async listLeadAssignees(city = '') {
+    async listLeadAssignees(city = '', spaceType = '') {
       const params = new URLSearchParams();
       if (city && city !== 'All cities') params.set('city', city);
+      if (spaceType) params.set('spaceType', spaceType);
       const q = params.toString();
       return request(`/api/v1/leads/assignees${q ? `?${q}` : ''}`);
     },
@@ -348,7 +351,7 @@ export function bindLegacyApiExports(request) {
     apiSmartMatchParse: (enquiry) => m.smartMatchParse(enquiry),
     apiSmartMatch: (payload) => m.smartMatch(payload),
     apiListLeads: (opts) => m.listLeads(opts),
-    apiListLeadAssignees: (city) => m.listLeadAssignees(city),
+    apiListLeadAssignees: (city, spaceType) => m.listLeadAssignees(city, spaceType),
     apiGetLead: (id) => m.getLead(id),
     apiCreateLead: (payload) => m.createLead(payload),
     apiParseLead: (enquiry) => m.parseLead(enquiry),
