@@ -39,7 +39,7 @@ export default function LoginScreen() {
         <View style={styles.brandRow}>
           <Image source={require('../../assets/icon.png')} style={styles.logo} />
           <View>
-            <Text style={styles.name}>Spacehaat</Text>
+            <Text style={styles.name}>SpaceWallah</Text>
             <Text style={styles.sub}>Command Center</Text>
           </View>
         </View>
@@ -55,7 +55,7 @@ export default function LoginScreen() {
           autoCapitalize="none"
           keyboardType="email-address"
           autoComplete="email"
-          placeholder="you@spacehaat.in"
+          placeholder="you@spacewallah.com"
           placeholderTextColor={colors.faint}
           value={email}
           onChangeText={setEmail}

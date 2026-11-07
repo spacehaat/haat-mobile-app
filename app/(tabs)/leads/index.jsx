@@ -183,6 +183,7 @@ export default function LeadsListScreen() {
       reminder: reminderFilter,
       dateFrom: dateRange.dateFrom,
       dateTo: dateRange.dateTo,
+      group: 'phone',
     }),
   });
 
@@ -224,6 +225,12 @@ export default function LeadsListScreen() {
       <View style={styles.metaRow}>
         <Text style={styles.meta}>{formatDate(item.leadDate)}</Text>
         {item.assigneeName ? <Text style={styles.meta}> · {item.assigneeName}</Text> : null}
+        {item.threadCount > 1 ? (
+          <View style={styles.threadBadge}>
+            <Ionicons name="chatbubbles-outline" size={12} color={colors.brand} />
+            <Text style={styles.threadBadgeText}>{item.threadCount} enquiries</Text>
+          </View>
+        ) : null}
       </View>
     </Pressable>
   );
@@ -435,8 +442,19 @@ const styles = StyleSheet.create({
   cardBody: { flex: 1, minWidth: 0 },
   name: { fontSize: 15, fontWeight: '700', color: colors.ink },
   sub: { marginTop: 2, fontSize: 12, color: colors.muted },
-  metaRow: { flexDirection: 'row', marginTop: 10 },
+  metaRow: { flexDirection: 'row', alignItems: 'center', marginTop: 10 },
   meta: { fontSize: 12, color: colors.muted },
+  threadBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginLeft: 'auto',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    backgroundColor: colors.brandSoft,
+  },
+  threadBadgeText: { fontSize: 11, fontWeight: '700', color: colors.brandInk },
   empty: { padding: 40, alignItems: 'center', gap: 8 },
   emptyText: { color: colors.muted, fontSize: 15, fontWeight: '600' },
   emptyHint: { color: colors.faint, fontSize: 13, textAlign: 'center' },

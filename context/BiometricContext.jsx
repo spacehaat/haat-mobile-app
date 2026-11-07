@@ -109,7 +109,7 @@ export function BiometricProvider({ children }) {
       {children}
       {value.locked ? (
         <View style={styles.overlay}>
-          <Text style={styles.title}>Spacehaat locked</Text>
+          <Text style={styles.title}>SpaceWallah locked</Text>
           <Text style={styles.sub}>Authenticate to continue</Text>
           <Pressable style={styles.btn} onPress={unlock} disabled={unlocking}>
             {unlocking ? <ActivityIndicator color="#fff" /> : (

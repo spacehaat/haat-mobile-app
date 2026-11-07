@@ -50,12 +50,20 @@ export default function LeadDetailScreen() {
     enabled: Boolean(leadId),
   });
 
+  // Other enquiries submitted with the same phone number.
+  const { data: thread = [] } = useQuery({
+    queryKey: ['lead-thread', leadId],
+    queryFn: () => mobileApi.getLeadThread(leadId),
+    enabled: Boolean(leadId),
+  });
+
   const deleteMutation = useMutation({
     mutationFn: () => mobileApi.deleteLead(leadId),
     onSuccess: () => {
       setConfirmDeleteOpen(false);
       queryClient.removeQueries({ queryKey: ['lead', leadId] });
       queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-thread'] });
       router.back();
     },
     onError: (err) => Alert.alert('Delete failed', err.message || 'Could not delete lead'),
@@ -77,6 +85,7 @@ export default function LeadDetailScreen() {
       }
       queryClient.setQueryData(['lead', leadId], updated);
       queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-thread'] });
       setCmbModalOpen(false);
     },
     onError: (err) => Alert.alert('Update failed', err.message),
@@ -117,16 +126,17 @@ export default function LeadDetailScreen() {
     onSuccess: (updated) => {
       queryClient.setQueryData(['lead', leadId], updated);
       queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-thread'] });
       Alert.alert('Reminder set', 'The assignee will get a push notification at the scheduled time.');
     },
     onError: (err) => Alert.alert('Could not set reminder', err.message || 'Try again'),
   });
 
   useEffect(() => {
-    if (!canAssign || !lead?.city) return;
+    if (!canAssign || !lead) return;
     let cancelled = false;
     setLoadingAssignees(true);
-    mobileApi.listLeadAssignees(lead.city, lead.spaceType || DEFAULT_LEAD_SPACE_TYPE)
+    mobileApi.listLeadAssignees(lead.city || '', lead.spaceType || DEFAULT_LEAD_SPACE_TYPE)
       .then((data) => {
         if (cancelled) return;
         setAssigneeOptions(data.items || []);
@@ -139,7 +149,7 @@ export default function LeadDetailScreen() {
         if (!cancelled) setLoadingAssignees(false);
       });
     return () => { cancelled = true; };
-  }, [canAssign, lead?.city, lead?.spaceType]);
+  }, [canAssign, !!lead, lead?.city, lead?.spaceType]);
 
   const updateSpaceType = async (spaceType) => {
     if (savingSpaceType || !spaceType) return;
@@ -149,6 +159,7 @@ export default function LeadDetailScreen() {
       const updated = await mobileApi.updateLead(leadId, { spaceType });
       queryClient.setQueryData(['lead', leadId], updated);
       queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-thread'] });
     } catch (err) {
       Alert.alert('Could not update space type', err.message || 'Try again');
     } finally {
@@ -164,6 +175,7 @@ export default function LeadDetailScreen() {
       const updated = await mobileApi.updateLead(leadId, { assigneeId: assigneeId || null });
       queryClient.setQueryData(['lead', leadId], updated);
       queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-thread'] });
     } catch (err) {
       Alert.alert('Could not update assignee', err.message || 'Try again');
     } finally {
@@ -194,6 +206,7 @@ export default function LeadDetailScreen() {
       leadFollowUpWhatsAppMessage({
         clientName: lead.name || lead.company,
         memberName: user?.name,
+        spaceType: lead.spaceType,
       }),
     );
   };
@@ -240,6 +253,33 @@ export default function LeadDetailScreen() {
           <StageBadge stage={lead.stage} />
           <Text style={styles.date}><Ionicons name="calendar-outline" size={13} color={colors.muted} /> {formatDate(lead.leadDate)}</Text>
         </View>
+
+        {thread.length > 1 ? (
+          <View style={styles.panel}>
+            <Text style={styles.panelTitle}>Enquiries from this number ({thread.length})</Text>
+            {thread.map((item) => {
+              const current = item.id === leadId;
+              return (
+                <Pressable
+                  key={item.id}
+                  style={[styles.threadRow, current && styles.threadRowOn]}
+                  onPress={() => { if (!current) router.push(`/(tabs)/leads/${item.id}`); }}
+                  disabled={current}
+                >
+                  <View style={styles.threadBody}>
+                    <Text style={styles.threadDate}>
+                      {formatDate(item.leadDate)}{current ? '  ·  Viewing' : ''}
+                    </Text>
+                    {leadSubtitle(item) ? <Text style={styles.threadSub}>{leadSubtitle(item)}</Text> : null}
+                    {item.assigneeName ? <Text style={styles.threadSub}>{item.assigneeName}</Text> : null}
+                  </View>
+                  <StageBadge stage={item.stage} compact />
+                  {current ? null : <Ionicons name="chevron-forward" size={16} color={colors.faint} />}
+                </Pressable>
+              );
+            })}
+          </View>
+        ) : null}
 
         <View style={styles.panel}>
           <Text style={styles.panelTitle}>Assigned to</Text>
@@ -496,6 +536,14 @@ const styles = StyleSheet.create({
     color: colors.faint, marginBottom: 4,
   },
   panelHint: { fontSize: 12, color: colors.muted, marginBottom: 10 },
+  threadRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, marginTop: 8,
+    backgroundColor: colors.surface2, borderRadius: 10, borderWidth: 1, borderColor: colors.surface2,
+  },
+  threadRowOn: { backgroundColor: colors.brandSoft, borderColor: colors.brand },
+  threadBody: { flex: 1, minWidth: 0 },
+  threadDate: { fontSize: 13, fontWeight: '700', color: colors.ink },
+  threadSub: { fontSize: 12, color: colors.muted, marginTop: 2 },
   assigneeName: { fontSize: 15, fontWeight: '700', color: colors.ink, marginTop: 4 },
   stageRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingRight: 8 },
   spaceTypeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6 },

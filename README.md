@@ -26,7 +26,7 @@ Press `i` (iOS simulator), `a` (Android emulator), or scan the QR code with Expo
 
 ```bash
 # Phone must reach API — use LAN IP for local backend, or production URL
-EXPO_PUBLIC_API_URL=https://haat-backend.onrender.com
+EXPO_PUBLIC_API_URL=https://api.spacewallah.com
 EXPO_PUBLIC_PORTAL_URL=https://haat-web-app.vercel.app
 ```
 
@@ -55,7 +55,7 @@ Copy `.env.example` → `.env` before running.
 See `eas.json` for build profiles. Set secrets in EAS:
 
 ```bash
-eas secret:create --name EXPO_PUBLIC_API_URL --value https://haat-backend.onrender.com
+eas secret:create --name EXPO_PUBLIC_API_URL --value https://api.spacewallah.com
 ```
 
 ## Shared packages (in-repo)

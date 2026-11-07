@@ -12,7 +12,7 @@ export const colors = {
   success: '#2E9E5B',
 };
 
-const DEFAULT_API_URL = 'https://haat-api.spacehaat.com';
+const DEFAULT_API_URL = 'https://api.spacewallah.com';
 
 /** Trim trailing slash; never ship a blank/localhost URL to devices. */
 export const apiBaseUrl = (() => {

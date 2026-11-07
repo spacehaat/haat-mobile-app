@@ -76,7 +76,7 @@ export default function PublicProposalPortal({ token }) {
   const feedback = data?.feedback || {};
   const proposal = data?.proposal;
   const listings = data?.listings || [];
-  const advisor = proposal?.sentBy || 'Spacehaat';
+  const advisor = proposal?.sentBy || 'SpaceWallah';
   const clientName = proposal?.client?.company || proposal?.client?.name || 'you';
 
   const buckets = useMemo(() => {
@@ -195,7 +195,7 @@ export default function PublicProposalPortal({ token }) {
           <View style={styles.brand}>
             <Image source={require('../../assets/icon.png')} style={styles.brandMark} />
             <View>
-              <Text style={styles.brandName}>Spacehaat</Text>
+              <Text style={styles.brandName}>SpaceWallah</Text>
               <Text style={styles.brandSub}>WORKSPACE PROPOSAL</Text>
             </View>
           </View>
@@ -293,7 +293,7 @@ export default function PublicProposalPortal({ token }) {
             <View style={styles.hmAv}><Text style={styles.hmAvText}>{initials(advisor)}</Text></View>
             <View>
               <Text style={styles.hmName}>{advisor}</Text>
-              <Text style={styles.hmSub}>Workspace Advisor · Spacehaat</Text>
+              <Text style={styles.hmSub}>Workspace Advisor · SpaceWallah</Text>
             </View>
           </View>
         </View>

@@ -154,7 +154,7 @@ export default function UserAccessForm({
               style={[styles.input, editing && styles.inputDisabled]}
               value={form.email}
               onChangeText={(v) => setField('email', v)}
-              placeholder="user@spacehaat.in"
+              placeholder="user@spacewallah.com"
               keyboardType="email-address"
               autoCapitalize="none"
               editable={!editing}

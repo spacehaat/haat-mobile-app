@@ -5,7 +5,7 @@ After pilot testing (M2.6), use this guide for **production** store submission.
 ## Prerequisites
 
 - Pilot feedback incorporated and critical bugs fixed
-- Production API at `https://api.spacehaat.in` (or your domain) with valid SSL
+- Production API at `https://api.spacewallah.com` (or your domain) with valid SSL
 - App Store Connect + Google Play Console apps created
 - Privacy policy URL (required by both stores)
 - Screenshots for all required device sizes
@@ -21,7 +21,7 @@ eas build --profile production --platform android
 The `production` profile in `eas.json` uses:
 - `distribution: store`
 - Auto-incrementing build numbers
-- `EXPO_PUBLIC_API_URL=https://api.spacehaat.in`
+- `EXPO_PUBLIC_API_URL=https://api.spacewallah.com`
 
 ## Submit to stores
 

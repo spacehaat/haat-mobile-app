@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Spacehaat",
+    "name": "SpaceWallah",
     "slug": "spacehaat",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -15,7 +15,7 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#4CAF50"
+      "backgroundColor": "#0B3B2E"
     },
     "ios": {
       "supportsTablet": true,
@@ -25,14 +25,14 @@
       ],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSUserNotificationsUsageDescription": "Spacehaat sends alerts when leads are assigned or follow-ups are overdue.",
-        "NSFaceIDUsageDescription": "Spacehaat uses Face ID to unlock the app and protect your client data."
+        "NSUserNotificationsUsageDescription": "SpaceWallah sends alerts when leads are assigned or follow-ups are overdue.",
+        "NSFaceIDUsageDescription": "SpaceWallah uses Face ID to unlock the app and protect your client data."
       }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#4CAF50",
+        "backgroundColor": "#0B3B2E",
         "monochromeImage": "./assets/notification-icon.png"
       },
       "package": "in.spacehaat.app",
@@ -84,15 +84,15 @@
         "expo-notifications",
         {
           "icon": "./assets/notification-icon.png",
-          "color": "#4CAF50",
+          "color": "#12A87A",
           "sounds": []
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow Spacehaat to attach workspace photos to listings.",
-          "cameraPermission": "Allow Spacehaat to take workspace photos for listings."
+          "photosPermission": "Allow SpaceWallah to attach workspace photos to listings.",
+          "cameraPermission": "Allow SpaceWallah to take workspace photos for listings."
         }
       ]
     ],

@@ -91,7 +91,7 @@ export default function ProposalBuilderScreen() {
     updateCoverNote(coverNote(client, items.length, coverNoteIdx));
   }, [items.length, coverNoteText, coverNoteIdx, client.name, client.company]);
 
-  const brokerName = user?.name || 'Spacehaat';
+  const brokerName = user?.name || 'SpaceWallah';
 
   const sendMessage = useMemo(() => buildProposalShareMessage({
     channel: sendChannel,

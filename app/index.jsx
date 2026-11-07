@@ -6,7 +6,7 @@ import { defaultTabPathForUser } from '../lib/access';
 export default function Index() {
   const { booting, isAuthenticated, user } = useAuth();
 
-  if (booting) return <LoadingScreen label="Starting Spacehaat…" />;
+  if (booting) return <LoadingScreen label="Starting SpaceWallah…" />;
   if (isAuthenticated) return <Redirect href={defaultTabPathForUser(user)} />;
   return <Redirect href="/(auth)/login" />;
 }

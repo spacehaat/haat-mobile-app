@@ -209,6 +209,7 @@ export function createApiMethods(request) {
       dateFrom = '',
       dateTo = '',
       reminder = '',
+      group = '',
     } = {}) {
       const params = new URLSearchParams();
       params.set('page', String(page));
@@ -223,6 +224,7 @@ export function createApiMethods(request) {
       if (dateFrom) params.set('dateFrom', dateFrom);
       if (dateTo) params.set('dateTo', dateTo);
       if (reminder) params.set('reminder', reminder);
+      if (group) params.set('group', group);
       return request(`/api/v1/leads?${params}`);
     },
 
@@ -237,6 +239,11 @@ export function createApiMethods(request) {
     async getLead(id) {
       const data = await request(`/api/v1/leads/${id}`);
       return data.item;
+    },
+
+    async getLeadThread(id) {
+      const data = await request(`/api/v1/leads/${id}/thread`);
+      return data.items || [];
     },
 
     async createLead(payload) {
@@ -353,6 +360,7 @@ export function bindLegacyApiExports(request) {
     apiListLeads: (opts) => m.listLeads(opts),
     apiListLeadAssignees: (city, spaceType) => m.listLeadAssignees(city, spaceType),
     apiGetLead: (id) => m.getLead(id),
+    apiGetLeadThread: (id) => m.getLeadThread(id),
     apiCreateLead: (payload) => m.createLead(payload),
     apiParseLead: (enquiry) => m.parseLead(enquiry),
     apiCreateLeadFromMatch: (payload) => m.createLeadFromMatch(payload),

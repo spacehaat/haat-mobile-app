@@ -26,7 +26,7 @@ eas init
 
 ### 2. Configure API URL for pilot builds
 
-Pilot profiles in `eas.json` default to `https://api.spacehaat.in`. Override per environment:
+Pilot profiles in `eas.json` default to `https://api.spacewallah.com`. Override per environment:
 
 ```bash
 # Staging API example

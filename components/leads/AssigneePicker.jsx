@@ -48,12 +48,13 @@ export default function AssigneePicker({
                   {u.name}
                   {u.role === 'admin' ? ' (Admin)' : ''}
                   {typeof u.openLeads === 'number' ? ` · ${u.openLeads} open` : ''}
+                  {u.matchesCity === false ? ' · other city' : u.matchesSpaceType === false ? ' · other space type' : ''}
                 </Text>
               </Pressable>
             );
           })}
           {!options.length ? (
-            <Text style={styles.empty}>No assignable users for this city.</Text>
+            <Text style={styles.empty}>No users with lead access yet.</Text>
           ) : null}
         </View>
       )}
