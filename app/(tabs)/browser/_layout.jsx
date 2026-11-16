@@ -38,28 +38,28 @@ export default function BrowserLayout() {
       <Stack.Screen
         name="add"
         options={{
-          title: 'Add inventory',
+          title: 'Inventory',
           headerLeft: () => <HeaderBackButton />,
         }}
       />
       <Stack.Screen
         name="new"
         options={{
-          title: 'Add inventory',
+          title: 'Inventory',
           headerLeft: () => <HeaderBackButton />,
         }}
       />
       <Stack.Screen
         name="[id]"
         options={{
-          title: 'Listing',
+          title: 'Space details',
           headerLeft: () => <HeaderBackButton />,
         }}
       />
       <Stack.Screen
         name="edit/[id]"
         options={{
-          title: 'Edit listing',
+          title: 'Inventory',
           headerLeft: () => <HeaderBackButton />,
         }}
       />

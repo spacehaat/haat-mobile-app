@@ -75,9 +75,63 @@ export function createApiMethods(request) {
       return request(`/api/v1/listings${q ? `?${q}` : ''}`);
     },
 
+    /** Exactly these spaces, in order (proposal builder). */
+    async listListingsByIds(ids = []) {
+      const list = [...new Set(ids.map(String).filter(Boolean))];
+      if (!list.length) return [];
+      const data = await request(`/api/v1/listings?ids=${encodeURIComponent(list.join(','))}`);
+      return data.items || [];
+    },
+
+    async getListingsMeta() {
+      return request('/api/v1/listings/meta');
+    },
+
     async getListing(id) {
       const data = await request(`/api/v1/listings/${id}`);
       return data.item;
+    },
+
+    /** Space form: brands, amenities, plan types, countries, tags, statuses. */
+    async getSpaceEditorOptions(vertical = 'coworking') {
+      return request(`/api/v1/listings/editor/options${vertical && vertical !== 'coworking' ? `?vertical=${encodeURIComponent(vertical)}` : ''}`);
+    },
+
+    /** States + cities of a country (or state), micro-locations of a city. */
+    async getSpaceLocations({ country = '', state = '', city = '' } = {}) {
+      const qs = new URLSearchParams();
+      if (country) qs.set('country', country);
+      if (state) qs.set('state', state);
+      if (city) qs.set('city', city);
+      return request(`/api/v1/listings/editor/locations?${qs}`);
+    },
+
+    /** The website space in the edit form's shape. */
+    async getSpaceForEdit(id) {
+      const data = await request(`/api/v1/listings/${id}/edit`);
+      return data.item;
+    },
+
+    async createSpace(payload) {
+      const data = await request('/api/v1/listings', { method: 'POST', body: payload });
+      return data.item;
+    },
+
+    async updateSpace(id, payload) {
+      const data = await request(`/api/v1/listings/${id}`, { method: 'PATCH', body: payload });
+      return data.item;
+    },
+
+    /** Uploads photos for a website space → [{ id, url, title }]. */
+    async uploadSpaceImages(files) {
+      const form = new FormData();
+      [...files].forEach((file) => form.append('images', file));
+      const data = await request('/api/v1/listings/editor/images', {
+        method: 'POST',
+        body: form,
+        formData: true,
+      });
+      return data.items || [];
     },
 
     async createListing(payload) {
@@ -88,6 +142,12 @@ export function createApiMethods(request) {
     async updateListing(id, payload) {
       const data = await request(`/api/v1/listings/${id}`, { method: 'PATCH', body: payload });
       return data.item;
+    },
+
+    /** Website "Verified on <date>" badge: { method: 'call'|'visit'|'documents' } or { remove: true }. */
+    async setWebsiteVerification(id, body) {
+      const data = await request(`/api/v1/listings/${id}/website-verification`, { method: 'POST', body });
+      return data.verification;
     },
 
     async verifyListing(id) {
@@ -338,6 +398,8 @@ export function bindLegacyApiExports(request) {
     apiUpdateUser: (id, payload) => m.updateUser(id, payload),
     apiListListings: (filters) => m.listListings(filters),
     apiGetListing: (id) => m.getListing(id),
+    apiGetListingsMeta: () => m.getListingsMeta(),
+    apiListListingsByIds: (ids) => m.listListingsByIds(ids),
     apiCreateListing: (payload) => m.createListing(payload),
     apiUpdateListing: (id, payload) => m.updateListing(id, payload),
     apiVerifyListing: (id) => m.verifyListing(id),

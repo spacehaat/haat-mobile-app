@@ -1,200 +1,286 @@
-import { View, Text, Pressable, StyleSheet, Linking } from 'react-native';
 import { useState } from 'react';
+import { View, Text, Pressable, StyleSheet, Linking } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { inr } from '@spacehaat/utils';
-import DetailSection from './DetailSection';
-import { profileOf, formatKv } from '../../lib/listingHelpers';
+import { profileOf } from '../../lib/listingHelpers';
 import { colors } from '../../constants/theme';
+import { verticalOf } from '../../constants/inventory';
 
-function KvRow({ label, value, dynamic }) {
+const UNIT = { month: '/mo', year: '/yr', week: '/wk', day: '/day', hour: '/hr' };
+
+const open = (url) => url && Linking.openURL(url).catch(() => {});
+const tel = (phone) => {
+  const digits = String(phone || '').replace(/[^\d+]/g, '');
+  return digits ? `tel:${digits}` : null;
+};
+
+function Card({ icon, title, right, children, tint }) {
   return (
-    <View style={styles.kvRow}>
-      <Text style={styles.kvLabel}>
-        {label}{dynamic ? ' •' : ''}
-      </Text>
-      <Text style={styles.kvValue}>{formatKv(value)}</Text>
+    <View style={styles.card}>
+      <View style={styles.cardHead}>
+        <View style={[styles.cardIcon, tint && { backgroundColor: tint.soft }]}><Ionicons name={icon} size={16} color={tint ? tint.color : colors.brandInk} /></View>
+        <Text style={styles.cardTitle}>{title}</Text>
+        {right}
+      </View>
+      {children}
     </View>
   );
 }
 
-function SectionDivider({ label }) {
-  return <Text style={styles.divide}>{label}</Text>;
+function Row({ icon, label, value, onPress, last }) {
+  if (value === undefined || value === null || value === '') return null;
+  return (
+    <Pressable disabled={!onPress} onPress={onPress} style={[styles.row, last && { borderBottomWidth: 0 }]}>
+      <Ionicons name={icon} size={17} color={colors.muted} style={{ marginTop: 1 }} />
+      <View style={{ flex: 1 }}>
+        <Text style={styles.rowLabel}>{label}</Text>
+        <Text style={[styles.rowValue, onPress && { color: colors.brandInk }]}>{String(value)}</Text>
+      </View>
+      {onPress ? <Ionicons name="open-outline" size={16} color={colors.brandInk} /> : null}
+    </Pressable>
+  );
 }
 
+function Fact({ label, value, unit }) {
+  if (!value) return null;
+  return (
+    <View style={styles.fact}>
+      <Text style={styles.factLabel}>{label}</Text>
+      <Text style={styles.factValue}>{value}{unit ? <Text style={styles.planUnit}>{unit}</Text> : null}</Text>
+    </View>
+  );
+}
+
+function Person({ role, person }) {
+  if (!person?.name && !person?.phone) return null;
+  const link = tel(person.phone);
+  return (
+    <View style={styles.person}>
+      <View style={styles.avatar}><Text style={styles.avatarText}>{(person.name || role).trim().charAt(0).toUpperCase()}</Text></View>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.personName}>{person.name || '—'}</Text>
+        <Text style={styles.personRole}>{role}{person.phone ? ` · ${person.phone}` : ''}</Text>
+      </View>
+      {link ? (
+        <Pressable onPress={() => open(link)} style={styles.callBtn} hitSlop={6}>
+          <Ionicons name="call" size={16} color={colors.brandInk} />
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
+/** Everything the website knows about a coworking space, grouped for sales staff. */
 export default function ListingDetailSections({ listing, canSeeInternal }) {
   const p = profileOf(listing);
+  const v = verticalOf(listing);
+  const mo = v.key === 'managed-office';
+  const pg = v.key === 'coliving';
+  const P = listing.pg || {};
+  const office = listing.office || {};
   const I = p.identity || {};
-  const C = p.capacity || {};
-  const P = p.pricing || {};
-  const S = p.salesIntel || {};
   const O = p.operations || {};
   const F = p.contactsMedia || {};
+  const [more, setMore] = useState(false);
 
-  const [open, setOpen] = useState({ A: true, B: false, C: false, D: false, E: false, F: false });
-  const toggle = (key) => setOpen((prev) => ({ ...prev, [key]: !prev[key] }));
-
-  const rawAmenities = F.extraAmenities ?? listing.amenities ?? [];
-  const amenities = Array.isArray(rawAmenities)
-    ? rawAmenities.filter(Boolean)
-    : String(rawAmenities || '').split(/[,;|]/).map((s) => s.trim()).filter(Boolean);
-  const competitors = Array.isArray(S.competitors)
-    ? S.competitors
-    : (S.competitors ? [String(S.competitors)] : []);
+  const plans = listing.plans || [];
+  const monthly = plans.filter((pl) => pl.unit === 'month');
+  const priced = monthly.filter((pl) => !pl.onRequest && pl.price > 0);
+  const lowest = priced.length ? priced.reduce((a, b) => (b.price < a.price ? b : a)) : null;
+  const amenities = (listing.amenities?.length ? listing.amenities : F.extraAmenities) || [];
+  const description = listing.description || '';
+  const hours = listing.hours || [];
 
   return (
     <View style={styles.wrap}>
-      <DetailSection
-        title="A · Identity & Location"
-        tag="static"
-        open={open.A}
-        onToggle={() => toggle('A')}
-      >
-        <KvRow label="Centre name" value={I.centreName} />
-        <KvRow label="Building type" value={I.buildingType} />
-        <KvRow label="Full address" value={I.address} />
-        <KvRow label="Maps link" value={I.mapsLink} />
-        {I.mapsLink ? (
-          <Pressable onPress={() => Linking.openURL(I.mapsLink.startsWith('http') ? I.mapsLink : `https://${I.mapsLink}`)}>
-            <Text style={styles.link}>Open in Maps</Text>
-          </Pressable>
-        ) : null}
-        <KvRow label="Nearest metro" value={I.nearestMetro} />
-        <KvRow label="Nearest railway" value={I.nearestRail} />
-        <KvRow label="Floor(s) occupied" value={I.floors} />
-        <KvRow label="Ownership" value={I.ownership} />
-        <KvRow label="Entrance facing" value={I.entranceFacing} />
-        <KvRow label="Zoning / area type" value={I.zoning} />
-        <KvRow label="Vastu compliant" value={I.vastu ? 'Yes' : 'No'} />
-        <KvRow label="Layout type" value={I.layoutType} />
-        <KvRow label="Super built-up" value={I.superBuiltUp ? `${Number(I.superBuiltUp).toLocaleString('en-IN')} sq ft` : null} />
-        <KvRow label="Carpet area" value={I.carpet ? `${Number(I.carpet).toLocaleString('en-IN')} sq ft` : null} />
-        <KvRow label="Desk size" value={I.deskSize} />
-      </DetailSection>
-
-      <DetailSection
-        title="B · Capacity"
-        tag="dynamic"
-        open={open.B}
-        onToggle={() => toggle('B')}
-      >
-        <KvRow label="Total seats (excl. meeting/conf)" value={C.totalSeats} />
-        <KvRow label="Total open workstations" value={C.totalWorkstations} />
-        <KvRow label="Total private cabins" value={C.totalCabins ? `${C.totalCabins} (${C.cabinSeatsEach || 4}-seater)` : null} />
-        <KvRow label="Meeting rooms" value={C.meetingRooms ? `${C.meetingRooms} (${C.meetingRoomSeats || 6}-seat)` : null} />
-        <KvRow label="Conference rooms" value={C.conferenceRooms ? `${C.conferenceRooms} (${C.conferenceSeats || 12}-seat)` : null} />
-        <SectionDivider label="Live availability" />
-        <KvRow label="Open workstations available" value={C.availWorkstations ?? listing.seats} dynamic />
-        <KvRow label="Private cabins available" value={C.availCabins != null ? `${C.availCabins} (${C.availCabinSeats || 4}-seater)` : null} dynamic />
-        <KvRow label="Hot desk available" value={C.hotDeskAvailable ? `Yes · ${C.hotDeskCount || 0} seats` : 'No'} dynamic />
-      </DetailSection>
-
-      <DetailSection
-        title="C · Pricing"
-        tag="dynamic"
-        open={open.C}
-        onToggle={() => toggle('C')}
-      >
-        <KvRow label="Hot desk" value={P.hotDesk != null ? `${inr(P.hotDesk)}/mo` : null} dynamic />
-        <KvRow label="Dedicated desk" value={P.dedicatedDesk != null ? `${inr(P.dedicatedDesk)}/seat/mo` : `${inr(listing.price)}/seat/mo`} dynamic />
-        <KvRow label="Private cabin" value={P.privateCabin != null ? `${inr(P.privateCabin)}/seat/mo` : null} dynamic />
-        <KvRow label="Managed office" value={P.managedPerSqft != null ? `₹${P.managedPerSqft}/sq ft` : null} dynamic />
-        <KvRow label="Conference room (hr)" value={P.confRoomHour != null ? inr(P.confRoomHour) : null} dynamic />
-        <KvRow label="Conference room (day)" value={P.confRoomDay != null ? inr(P.confRoomDay) : null} dynamic />
-        <KvRow label="Meeting room (hr)" value={P.meetingRoomHour != null ? inr(P.meetingRoomHour) : null} dynamic />
-        <KvRow label="Day pass" value={P.dayPass != null ? inr(P.dayPass) : null} dynamic />
-        <KvRow label="Car parking" value={P.carParking != null ? `${inr(P.carParking)}/mo` : null} dynamic />
-        <KvRow label="2-wheeler parking" value={P.twoWheeler != null ? `${inr(P.twoWheeler)}/mo` : null} dynamic />
-        <KvRow label="Beyond-hours" value={P.beyondHours} dynamic />
-        <KvRow label="Signage board (reception)" value={P.signageBoard != null ? inr(P.signageBoard) : null} dynamic />
-        <KvRow label="Security deposit" value={P.securityDeposit} dynamic />
-        <KvRow label="Notice period" value={P.noticePeriod} dynamic />
-      </DetailSection>
-
-      {canSeeInternal ? (
-        <DetailSection
-          title="D · Sales Intelligence"
-          tag="internal"
-          internal
-          open={open.D}
-          onToggle={() => toggle('D')}
-        >
-          <KvRow label="Pitching price" value={S.pitchingPrice != null ? inr(S.pitchingPrice) : null} />
-          <KvRow label="Closing price" value={S.closingPrice != null ? inr(S.closingPrice) : null} />
-          <KvRow label="YoY increment" value={S.yoyIncrement} />
-          <KvRow label="Nearby competitors" value={competitors.join('; ') || null} />
-          <KvRow label="Expansion plans" value={S.expansionPlans} />
-          <KvRow label="Commission / payment a/c" value={S.commissionAccount} />
-        </DetailSection>
+      {plans.length ? (
+        <Card tint={v} icon={mo ? 'grid-outline' : pg ? 'bed-outline' : 'pricetags-outline'} title={mo ? 'Seat plans' : pg ? 'Rooms & rent' : 'Plans & pricing'} right={<Text style={styles.cardHint}>{plans.length} {pg ? 'room type' : 'plan'}{plans.length > 1 ? 's' : ''}</Text>}>
+          <View style={styles.plans}>
+            {plans.map((pl, i) => (
+              <View key={`${pl.label}-${i}`} style={[styles.plan, pl === lowest && [styles.planBest, { backgroundColor: v.soft, borderColor: v.color }]]}>
+                <Text style={styles.planName} numberOfLines={2}>{pl.label}</Text>
+                {pl.onRequest ? (
+                  <Text style={[styles.planPrice, { fontSize: 15 }]}>On request</Text>
+                ) : (
+                  <Text style={styles.planPrice}>{inr(pl.price)}<Text style={styles.planUnit}>{mo ? '/seat' : ''}{UNIT[pl.unit] || ''}</Text></Text>
+                )}
+                {pg && pl.deposit ? <Text style={styles.planUnit}>Deposit {inr(pl.deposit)}</Text> : null}
+                {pl === lowest ? <Text style={[styles.planTag, { backgroundColor: v.color }]}>Lowest / mo</Text> : null}
+              </View>
+            ))}
+          </View>
+        </Card>
       ) : null}
 
-      <DetailSection
-        title="E · Operations"
-        tag="static"
-        open={open.E}
-        onToggle={() => toggle('E')}
-      >
-        <KvRow label="Timings" value={O.timings} />
-        <KvRow label="Days open" value={O.daysOpen} />
-        <KvRow label="Sunday client visits" value={O.sundayVisits ? 'Yes' : 'No'} />
-        <KvRow label="Managed office available" value={O.managedOfficeAvailable ? 'Yes' : 'No'} dynamic />
-        <KvRow label="Virtual office available" value={O.virtualOfficeAvailable ? 'Yes' : 'No'} dynamic />
-      </DetailSection>
-
-      <DetailSection
-        title="F · Contacts & Amenities"
-        tag="static"
-        open={open.F}
-        onToggle={() => toggle('F')}
-      >
-        <KvRow label="Centre manager" value={`${F.centerManager?.name || '—'} · ${F.centerManager?.phone || '—'}`} />
-        <KvRow label="Community manager" value={`${F.communityManager?.name || '—'} · ${F.communityManager?.phone || '—'}`} />
-        <KvRow label="Sales contact" value={F.salesPhone} />
-        <KvRow label="Sales email" value={F.salesEmail} />
-        <KvRow label="Account email" value={F.accountEmail} />
-        <KvRow label="Car parking" value={F.carParkingAvailable ? `Yes · ${F.carParkingSpaces || 0} spaces` : 'No'} />
-        <KvRow label="2-wheeler spaces" value={F.twoWheelerSpaces} />
-
-        {amenities.length ? (
-          <>
-            <SectionDivider label="Extra amenities" />
-            <View style={styles.amenRow}>
-              {amenities.map((a) => (
-                <Text key={a} style={styles.amenChip}>{a}</Text>
+      {mo && (office.minSeats || office.minMonths || office.superArea || office.totalFloors || office.floors?.length) ? (
+        <Card tint={v} icon="business-outline" title="Building & lease">
+          <View style={styles.facts}>
+            <Fact label="Minimum seats" value={office.minSeats} />
+            <Fact label="Lock-in" value={office.minMonths} unit=" months" />
+            <Fact label="Super area" value={office.superArea ? office.superArea.toLocaleString('en-IN') : ''} unit=" sq ft" />
+            <Fact label="Floors in building" value={office.totalFloors} />
+            <Fact label="Seats in building" value={office.totalSeats} />
+            <Fact label="Centre type" value={office.centreType} />
+          </View>
+          {office.floors?.length ? (
+            <View style={{ marginTop: 10 }}>
+              <Text style={styles.subLabel}>Floors on offer</Text>
+              {office.floors.map((f, i) => (
+                <View key={i} style={[styles.floorRow, i === office.floors.length - 1 && { borderBottomWidth: 0 }]}>
+                  <Text style={styles.floorName}>{f.floor !== '' && f.floor !== null ? `Floor ${f.floor}` : `Floor ${i + 1}`}</Text>
+                  <Text style={styles.floorMeta}>
+                    {[f.area ? `${f.area.toLocaleString('en-IN')} sq ft` : '', f.seats ? `${f.seats} seats` : ''].filter(Boolean).join(' · ') || '—'}
+                  </Text>
+                </View>
               ))}
             </View>
-          </>
-        ) : null}
+          ) : null}
+        </Card>
+      ) : null}
 
-        <SectionDivider label="Links" />
-        <View style={styles.linksRow}>
-          {F.brochure ? <Text style={styles.linkChip}>📄 {F.brochure}</Text> : null}
-          {F.website ? <Text style={styles.linkChip}>🌐 {F.website}</Text> : null}
-          {F.instagram ? <Text style={styles.linkChip}>📷 {F.instagram}</Text> : null}
-          {F.linkedin ? <Text style={styles.linkChip}>🔗 LinkedIn</Text> : null}
-          {F.virtualTour ? <Text style={styles.linkChip}>▶ Virtual tour</Text> : null}
-        </View>
-      </DetailSection>
+      {mo && office.rating ? (
+        <Card tint={v} icon="star-outline" title="Rating">
+          <Text style={styles.rating}>
+            ★ {office.rating.average}
+            <Text style={styles.planUnit}>{office.rating.total ? `  ·  ${office.rating.total} reviews` : ''}{office.rating.source ? `  ·  ${office.rating.source}` : ''}</Text>
+          </Text>
+        </Card>
+      ) : null}
+
+      {pg ? (
+        <Card tint={v} icon="home-outline" title="PG details">
+          <Row icon="people-outline" label="For" value={P.gender ? `${P.gender}${P.guests && P.guests !== 'Both' ? ` · ${P.guests}` : ''}` : ''} />
+          <Row icon="restaurant-outline" label="Food" value={P.food} />
+          <Row icon="shirt-outline" label="Laundry" value={P.laundry} />
+          <Row icon="calendar-outline" label="Notice period" value={P.noticeDays ? `${P.noticeDays} days` : 'None'} />
+          <Row icon="person-outline" label="Listed by" value={P.postedBy} />
+          <Row icon="star-outline" label="Rating" value={P.rating ? `★ ${P.rating}` : ''} />
+          <Row icon="shield-checkmark-outline" label="Website badge" value={P.websiteVerifiedAt ? `Verified on ${new Date(P.websiteVerifiedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}` : 'Not verified'} />
+          <Row icon="logo-google" label="In Google" value={P.inGoogle === false ? 'No (noindex)' : P.inGoogle === true ? 'Yes' : 'Not checked yet'} last />
+        </Card>
+      ) : null}
+
+      {pg && P.rules?.length ? (
+        <Card icon="list-outline" title="House rules" right={<Text style={styles.cardHint}>{P.rules.length}</Text>}>
+          <View style={styles.amenities}>
+            {P.rules.map((r) => (
+              <View key={r} style={styles.amenity}>
+                <Ionicons name="ellipse" size={7} color={colors.muted} />
+                <Text style={styles.amenityText}>{r}</Text>
+              </View>
+            ))}
+          </View>
+        </Card>
+      ) : null}
+
+      {amenities.length ? (
+        <Card icon="sparkles-outline" title="Amenities" right={<Text style={styles.cardHint}>{amenities.length}</Text>}>
+          <View style={styles.amenities}>
+            {amenities.map((a) => (
+              <View key={a} style={styles.amenity}>
+                <Ionicons name="checkmark-circle" size={14} color={colors.brand} />
+                <Text style={styles.amenityText}>{a}</Text>
+              </View>
+            ))}
+          </View>
+        </Card>
+      ) : null}
+
+      {description ? (
+        <Card icon="document-text-outline" title={pg ? 'About this PG' : 'About this space'}>
+          <Text style={styles.about} numberOfLines={more ? undefined : 4}>{description}</Text>
+          {description.length > 220 ? (
+            <Pressable onPress={() => setMore((m) => !m)} hitSlop={6}>
+              <Text style={styles.moreLink}>{more ? 'Show less' : 'Read more'}</Text>
+            </Pressable>
+          ) : null}
+        </Card>
+      ) : null}
+
+      <Card icon="location-outline" title="Location">
+        <Row icon="business-outline" label="Address" value={I.address} />
+        <Row icon="flag-outline" label="Landmark" value={I.landmark} />
+        <Row icon="train-outline" label="Nearest metro" value={I.nearestMetro} />
+        <Row icon="layers-outline" label="Floor" value={I.floors} />
+        <Row icon="map-outline" label="Map" value={I.mapsLink ? 'Open in Google Maps' : null} onPress={() => open(I.mapsLink)} last />
+      </Card>
+
+      {hours.length || O.timings ? (
+        <Card icon="time-outline" title="Opening hours">
+          {hours.length
+            ? hours.map((h, i) => <Row key={h.label} icon="calendar-outline" label={h.label} value={h.value} last={i === hours.length - 1} />)
+            : <Row icon="calendar-outline" label={O.daysOpen || 'Timings'} value={O.timings} last />}
+        </Card>
+      ) : null}
+
+      {canSeeInternal && pg && (F.salesPhone || F.salesEmail) ? (
+        <Card icon="call-outline" title="PG contact" right={<Text style={styles.internal}>Internal</Text>}>
+          <Row icon="call-outline" label="Phone" value={F.salesPhone} onPress={tel(F.salesPhone) ? () => open(tel(F.salesPhone)) : null} />
+          <Row icon="mail-outline" label="Email" value={F.salesEmail} onPress={F.salesEmail ? () => open(`mailto:${F.salesEmail}`) : null} last />
+        </Card>
+      ) : null}
+
+      {canSeeInternal && !mo && !pg ? (
+        <Card icon="people-outline" title="Space contacts" right={<Text style={styles.internal}>Internal</Text>}>
+          <Person role="Centre manager" person={F.centerManager} />
+          <Person role="Community manager" person={F.communityManager} />
+          <Row icon="call-outline" label="Sales phone" value={F.salesPhone} onPress={tel(F.salesPhone) ? () => open(tel(F.salesPhone)) : null} />
+          <Row icon="mail-outline" label="Sales email" value={F.salesEmail} onPress={F.salesEmail ? () => open(`mailto:${F.salesEmail}`) : null} />
+          <Row icon="globe-outline" label="Operator website" value={F.website} onPress={F.website ? () => open(F.website.startsWith('http') ? F.website : `https://${F.website}`) : null} last />
+          {!F.centerManager?.name && !F.communityManager?.name && !F.salesPhone && !F.salesEmail ? (
+            <Text style={styles.emptyNote}>No contacts added on the website yet.</Text>
+          ) : null}
+        </Card>
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { gap: 0 },
-  kvRow: { paddingVertical: 6, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
-  kvLabel: { fontSize: 12, color: colors.muted, marginBottom: 2 },
-  kvValue: { fontSize: 14, fontWeight: '600', color: colors.ink, lineHeight: 20 },
-  divide: {
-    fontSize: 11, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase',
-    color: colors.faint, marginTop: 8, marginBottom: 4,
+  wrap: { gap: 12 },
+  card: {
+    backgroundColor: colors.surface, borderRadius: 18, padding: 16,
+    shadowColor: '#0B2A14', shadowOpacity: 0.05, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 2,
   },
-  link: { color: colors.brand, fontWeight: '600', fontSize: 13, marginBottom: 4 },
-  amenRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  amenChip: {
-    fontSize: 12, fontWeight: '600', color: colors.ink,
-    backgroundColor: colors.surface2, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999,
+  cardHead: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
+  cardIcon: { width: 30, height: 30, borderRadius: 10, backgroundColor: colors.brandSoft, alignItems: 'center', justifyContent: 'center' },
+  cardTitle: { flex: 1, fontSize: 16, fontWeight: '800', color: colors.ink },
+  cardHint: { fontSize: 12, fontWeight: '700', color: colors.muted },
+  internal: { fontSize: 10.5, fontWeight: '800', color: '#A35F00', backgroundColor: '#FFF4E0', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, overflow: 'hidden' },
+  plans: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  plan: {
+    flexGrow: 1, flexBasis: '46%', borderRadius: 14, padding: 12, backgroundColor: colors.surface2, gap: 4,
   },
-  linksRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  linkChip: {
-    fontSize: 12, color: colors.ink, backgroundColor: colors.surface2,
-    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8,
+  planBest: { backgroundColor: colors.brandSoft, borderWidth: 1, borderColor: colors.brand },
+  planName: { fontSize: 12.5, fontWeight: '700', color: colors.muted },
+  planPrice: { fontSize: 18, fontWeight: '800', color: colors.ink },
+  planUnit: { fontSize: 12, fontWeight: '600', color: colors.muted },
+  planTag: { position: 'absolute', top: 8, right: 8, fontSize: 9.5, fontWeight: '800', color: '#fff', backgroundColor: colors.brand, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, overflow: 'hidden' },
+  amenities: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  amenity: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: colors.surface2, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 10 },
+  amenityText: { fontSize: 12.5, fontWeight: '600', color: colors.ink },
+  about: { fontSize: 14, lineHeight: 21, color: colors.ink },
+  moreLink: { marginTop: 6, fontSize: 13, fontWeight: '800', color: colors.brandInk },
+  row: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 12, paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border,
   },
+  rowLabel: { fontSize: 11.5, fontWeight: '700', color: colors.faint, textTransform: 'uppercase', letterSpacing: 0.3 },
+  rowValue: { fontSize: 14.5, fontWeight: '600', color: colors.ink, marginTop: 2, lineHeight: 20 },
+  person: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
+  avatar: { width: 38, height: 38, borderRadius: 19, backgroundColor: colors.brandSoft, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { fontSize: 15, fontWeight: '800', color: colors.brandInk },
+  personName: { fontSize: 14.5, fontWeight: '700', color: colors.ink },
+  personRole: { fontSize: 12.5, color: colors.muted, marginTop: 1 },
+  callBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.brandSoft, alignItems: 'center', justifyContent: 'center' },
+  emptyNote: { fontSize: 13, color: colors.muted, paddingVertical: 6 },
+  facts: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  fact: { flexGrow: 1, flexBasis: '46%', backgroundColor: colors.surface2, borderRadius: 12, padding: 10 },
+  factLabel: { fontSize: 11, fontWeight: '700', color: colors.faint, textTransform: 'uppercase', letterSpacing: 0.3 },
+  factValue: { fontSize: 16, fontWeight: '800', color: colors.ink, marginTop: 2 },
+  subLabel: { fontSize: 12, fontWeight: '800', color: colors.muted, marginBottom: 4 },
+  floorRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 9, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+  floorName: { fontSize: 14, fontWeight: '700', color: colors.ink },
+  floorMeta: { fontSize: 13.5, color: colors.muted },
+  rating: { fontSize: 20, fontWeight: '800', color: colors.ink },
 });

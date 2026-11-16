@@ -1,12 +1,11 @@
-import { Redirect } from 'expo-router';
+import { Redirect, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../../context/AuthContext';
 import { canManageInventory, defaultTabPathForUser } from '../../../lib/access';
-import NewListingScreen from '../../../components/inventory/NewListingScreen';
+import SpaceEditor from '../../../components/space-editor/SpaceEditor';
 
-export default function AddListingRoute() {
+export default function AddSpaceRoute() {
   const { user } = useAuth();
-  if (!canManageInventory(user)) {
-    return <Redirect href={defaultTabPathForUser(user)} />;
-  }
-  return <NewListingScreen />;
+  const { vertical } = useLocalSearchParams();
+  if (!canManageInventory(user)) return <Redirect href={defaultTabPathForUser(user)} />;
+  return <SpaceEditor vertical={Array.isArray(vertical) ? vertical[0] : vertical} />;
 }

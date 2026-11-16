@@ -1,24 +1,26 @@
 import { Component, useState } from 'react';
 import {
   Alert, Pressable, ScrollView, StyleSheet, Text, View, ActivityIndicator,
-  RefreshControl,
+  RefreshControl, Linking,
 } from 'react-native';
-import { Redirect, router, useLocalSearchParams } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { mobileApi } from '../../../lib/api';
 import { useAuth } from '../../../context/AuthContext';
 import { useProposal } from '../../../context/ProposalContext';
-import {
-  canVerifyListings, canManageInventory, canSeeProposalBuilder, isAdmin, defaultTabPathForUser,
-} from '../../../lib/access';
+import { canVerifyListings, canSeeProposalBuilder, canManageInventory, isAdmin } from '../../../lib/access';
 import FreshBadge from '../../../components/ui/FreshBadge';
+import ListingStatusBadge from '../../../components/ui/StatusBadge';
+import SpaceEditor from '../../../components/space-editor/SpaceEditor';
 import LoadingScreen from '../../../components/ui/LoadingScreen';
 import ListingDetailSections from '../../../components/ui/ListingDetailSections';
 import ListingGalleryCarousel from '../../../components/ui/ListingGalleryCarousel';
 import GallerySheet from '../../../components/ui/GallerySheet';
-import ConfirmDialog from '../../../components/ui/ConfirmDialog';
-import { coverImg, allGalleryPhotos, normalizeListingRecord } from '../../../lib/listingHelpers';
+import { coverImg, allGalleryPhotos, normalizeListingRecord, profileOf } from '../../../lib/listingHelpers';
+import { STATUS_COLORS, verticalOf } from '../../../constants/inventory';
+import { VerticalTag } from '../../../components/ui/ListingCard';
 import { colors } from '../../../constants/theme';
 import { inr } from '@spacehaat/utils';
 
@@ -55,21 +57,38 @@ class ListingDetailBoundary extends Component {
   }
 }
 
+const STATUS_NOTE = {
+  pending: 'Waiting for approval — not live on the website yet. Confirm details before sharing.',
+  inprogress: 'Our team is still working on this space. Confirm details before sharing.',
+  rejected: 'Rejected on the website. Check with the team before sharing it with a client.',
+};
+
+function Stat({ label, value, unit }) {
+  return (
+    <View style={styles.stat}>
+      <Text style={styles.statL}>{label}</Text>
+      <Text style={styles.statN} numberOfLines={1}>{value}</Text>
+      {unit ? <Text style={styles.statU}>{unit}</Text> : null}
+    </View>
+  );
+}
+
 function ListingDetailBody() {
-  const { id } = useLocalSearchParams();
+  const { id, vertical: vParam } = useLocalSearchParams();
+  const vertical = Array.isArray(vParam) ? vParam[0] : vParam;
   const listingId = Array.isArray(id) ? id[0] : id;
   const reservedRoute = listingId === 'edit' || listingId === 'new' || listingId === 'add';
+  const insets = useSafeAreaInsets();
 
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const canVerify = canVerifyListings(user);
-  const canEdit = canManageInventory(user);
   const admin = isAdmin(user);
+  const canEdit = canManageInventory(user);
   const showProposal = canSeeProposalBuilder(user);
   const { isInProposal, addToProposal, removeFromProposal } = useProposal();
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [galleryIndex, setGalleryIndex] = useState(0);
-  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   const { data: listing, isLoading, refetch, isRefetching, error } = useQuery({
     queryKey: ['listing', listingId],
@@ -82,52 +101,42 @@ function ListingDetailBody() {
     onSuccess: (updated) => {
       queryClient.setQueryData(['listing', listingId], normalizeListingRecord(updated));
       queryClient.invalidateQueries({ queryKey: ['listings'] });
-      Alert.alert('Verified', 'Listing marked as verified.');
+      Alert.alert('Verified', 'Marked as verified today.');
     },
     onError: (err) => Alert.alert('Verify failed', err.message),
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: () => mobileApi.deleteListing(listingId),
-    onSuccess: () => {
-      setConfirmDeleteOpen(false);
-      queryClient.removeQueries({ queryKey: ['listing', listingId] });
-      queryClient.invalidateQueries({ queryKey: ['listings'] });
-      goBackToInventory();
-    },
-    onError: (err) => Alert.alert('Delete failed', err.message || 'Could not delete listing'),
-  });
-
-  // On some Android builds, /browser/add (and /new) resolve as [id]="add"|"new".
-  // Render the wizard inline — do NOT redirect (that loops and kills the app).
-  if (listingId === 'new' || listingId === 'add') {
-    if (!canEdit) return <Redirect href={defaultTabPathForUser(user)} />;
-    // Lazy require so real listing detail screens don't load the wizard module.
-    const NewListingScreen = require('../../../components/inventory/NewListingScreen').default;
-    return <NewListingScreen />;
-  }
-
-  if (listingId === 'edit') {
-    return <Redirect href="/(tabs)/browser" />;
+  // On some Android builds, /browser/add (and /new, /edit) resolve as [id].
+  if (reservedRoute) {
+    if (listingId !== 'edit' && canEdit) return <SpaceEditor vertical={vertical} />;
+    return <ListingDetailError message="Open a space from Inventory to edit it." />;
   }
 
   if (!listingId) {
     return <ListingDetailError message="Missing listing id" />;
   }
 
-  if (isLoading) return <LoadingScreen label="Loading listing…" />;
+  if (isLoading) return <LoadingScreen label="Loading space…" />;
   if (error || !listing) {
     return <ListingDetailError message={error?.message} />;
   }
 
-  const inProposal = isInProposal(listing.id || listing._id);
+  const lid = listing.id || listing._id;
+  const inProposal = isInProposal(lid);
   const gallery = allGalleryPhotos(listing);
   const cover = coverImg(listing);
   const carouselPhotos = gallery.length
     ? gallery
-    : (cover
-      ? [{ src: cover, label: listing.type || 'Photo', caption: `${listing.operator || ''} · ${listing.micro || ''}` }]
-      : []);
+    : (cover ? [{ src: cover, label: listing.type || 'Photo', caption: `${listing.operator || ''} · ${listing.micro || ''}` }] : []);
+  const place = [listing.micro, listing.city].filter(Boolean).join(', ');
+  const types = (listing.spaceTypes?.length ? listing.spaceTypes : [listing.type]).filter(Boolean);
+  const note = STATUS_NOTE[listing.status?.key];
+  const tone = STATUS_COLORS[listing.status?.key];
+  const I = profileOf(listing).identity || {};
+  const V = verticalOf(listing);
+  const mo = V.key === 'managed-office';
+  const pg = V.key === 'coliving';
+  const editable = listing.source === 'workspace' || listing.source === 'managed-office' || listing.source === 'pg';
 
   const openGallery = (index = 0) => {
     setGalleryIndex(index);
@@ -135,13 +144,9 @@ function ListingDetailBody() {
   };
 
   const toggleProposal = async () => {
-    const lid = listing.id || listing._id;
     try {
-      if (inProposal) {
-        await removeFromProposal(lid);
-      } else {
-        await addToProposal(lid, listing);
-      }
+      if (inProposal) await removeFromProposal(lid);
+      else await addToProposal(lid, listing);
     } catch (err) {
       Alert.alert('Proposal', err.message || 'Could not update proposal');
     }
@@ -149,125 +154,130 @@ function ListingDetailBody() {
 
   return (
     <View style={styles.screen}>
+      <Stack.Screen
+        options={{
+          title: mo ? 'Managed office' : pg ? 'PG / Coliving' : 'Coworking space',
+          headerRight: canEdit && editable ? () => (
+            <Pressable onPress={() => router.push(`/(tabs)/browser/edit/${lid}`)} hitSlop={8} style={[styles.headerEdit, { backgroundColor: V.soft }]}>
+              <Ionicons name="create-outline" size={18} color={V.color} />
+              <Text style={[styles.headerEditText, { color: V.color }]}>Edit</Text>
+            </Pressable>
+          ) : undefined,
+        }}
+      />
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: 120 + insets.bottom }]}
         refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.brand} />}
       >
-        <ListingGalleryCarousel
-          photos={carouselPhotos}
-          onOpenGallery={openGallery}
-        />
+        <ListingGalleryCarousel photos={carouselPhotos} onOpenGallery={openGallery} />
 
-        <View style={styles.heroMeta}>
-          <Text style={styles.title}>{listing.operator} · {listing.micro}</Text>
-          <Text style={styles.sub}>{listing.type} · {listing.city}</Text>
-          <FreshBadge fresh={listing.fresh} />
+        <View style={styles.hero}>
+          <View style={styles.badges}>
+            <VerticalTag listing={listing} />
+            <ListingStatusBadge status={listing.status} />
+            <FreshBadge fresh={listing.fresh} />
+            {listing.isActive === false ? <Text style={styles.hidden}>Hidden on website</Text> : null}
+          </View>
+          <Text style={styles.title}>{listing.operator}</Text>
+          {place ? (
+            <View style={styles.placeRow}>
+              <Ionicons name="location" size={15} color={colors.brand} />
+              <Text style={styles.place}>{place}</Text>
+            </View>
+          ) : null}
+          {I.address ? <Text style={styles.address} numberOfLines={2}>{I.address}</Text> : null}
+          {types.length ? (
+            <View style={styles.types}>
+              {(mo ? listing.office?.seatTypes || [] : types).map((t) => <Text key={t} style={[styles.typeChip, { color: V.color, backgroundColor: V.soft }]}>{t}</Text>)}
+            </View>
+          ) : null}
         </View>
 
-        <View style={styles.quick}>
-          <View style={styles.quickCell}>
-            <Text style={styles.quickL}>Seats available</Text>
-            <Text style={styles.quickN}>{listing.seats}</Text>
+        {note ? (
+          <View style={[styles.note, tone && { backgroundColor: tone.bg }]}>
+            <Ionicons name={tone?.icon || 'information-circle'} size={18} color={tone?.text || colors.ink} />
+            <Text style={[styles.noteText, tone && { color: tone.text }]}>{note}</Text>
           </View>
-          <View style={styles.quickCell}>
-            <Text style={styles.quickL}>From</Text>
-            <Text style={styles.quickN}>{inr(listing.price)}</Text>
-            <Text style={styles.quickU}>/seat/mo</Text>
-          </View>
-          <View style={styles.quickCell}>
-            <Text style={styles.quickL}>Available</Text>
-            <Text style={styles.quickN}>{listing.avail || '—'}</Text>
-          </View>
+        ) : null}
+
+        <View style={styles.stats}>
+          <Stat label={pg ? 'Rent from' : 'Starting from'} value={listing.price ? inr(listing.price) : '—'} unit={listing.price ? (pg ? '/mo' : '/seat/mo') : 'on request'} />
+          {pg ? (
+            <>
+              <Stat label="Room types" value={(listing.plans || []).length || '—'} />
+              <Stat label="For" value={listing.pg?.gender || '—'} />
+            </>
+          ) : <Stat label="Total seats" value={listing.seats || '—'} />}
+          {pg ? null : mo ? (
+            <Stat label="Min seats" value={listing.office?.minSeats || '—'} unit={listing.office?.minMonths ? `${listing.office.minMonths}-mo lock-in` : ''} />
+          ) : (
+            <Stat label="Plans" value={(listing.plans || []).length || '—'} unit={types[0] || ''} />
+          )}
         </View>
 
-        <ListingDetailSections
-          listing={listing}
-          canSeeInternal={canVerify}
-        />
+        <ListingDetailSections listing={listing} canSeeInternal={canVerify} />
 
-        <View style={styles.actions}>
-          {canEdit ? (
-            <Pressable
-              style={[styles.btn, styles.btnEdit]}
-              onPress={() => router.push(`/(tabs)/browser/edit/${encodeURIComponent(String(listingId))}`)}
-            >
-              <Ionicons name="pencil-outline" size={20} color="#fff" />
-              <Text style={styles.btnPrimaryText}>Edit listing</Text>
+        <View style={styles.links}>
+          {canEdit && editable ? (
+            <Pressable style={[styles.linkBtn, styles.editBtn, { backgroundColor: V.color, borderColor: V.color }]} onPress={() => router.push(`/(tabs)/browser/edit/${lid}`)}>
+              <Ionicons name="create-outline" size={18} color="#fff" />
+              <Text style={[styles.linkText, { color: '#fff' }]}>{mo ? 'Edit office details' : pg ? 'Edit PG details' : 'Edit space details'}</Text>
             </Pressable>
           ) : null}
-
-          {showProposal ? (
-            <Pressable
-              style={[styles.btn, inProposal ? styles.btnSuccess : styles.btnPrimary]}
-              onPress={toggleProposal}
-            >
-              <Ionicons
-                name={inProposal ? 'checkmark-circle' : 'add-circle-outline'}
-                size={20}
-                color="#fff"
-              />
-              <Text style={styles.btnPrimaryText}>
-                {inProposal ? 'Added to proposal' : 'Add to proposal'}
-              </Text>
+          {listing.url ? (
+            <Pressable style={styles.linkBtn} onPress={() => Linking.openURL(listing.url)}>
+              <Ionicons name="globe-outline" size={18} color={colors.ink} />
+              <Text style={styles.linkText}>View on website</Text>
             </Pressable>
           ) : null}
-
-          {inProposal ? (
-            <Pressable style={styles.btn} onPress={() => router.push('/(tabs)/proposals/builder')}>
-              <Ionicons name="document-text-outline" size={20} color={colors.ink} />
-              <Text style={styles.btnText}>Open proposal builder</Text>
+          {admin && listing.adminUrl ? (
+            <Pressable style={styles.linkBtn} onPress={() => Linking.openURL(listing.adminUrl)}>
+              <Ionicons name="open-outline" size={18} color={colors.ink} />
+              <Text style={styles.linkText}>Open in admin panel</Text>
             </Pressable>
           ) : null}
-
           {canVerify ? (
             <Pressable
-              style={[styles.btn, styles.btnVerify, verifyMutation.isPending && styles.btnOff]}
+              style={[styles.linkBtn, verifyMutation.isPending && styles.btnOff]}
               disabled={verifyMutation.isPending}
               onPress={() => verifyMutation.mutate()}
             >
-              {verifyMutation.isPending ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
+              {verifyMutation.isPending ? <ActivityIndicator color={colors.brand} /> : (
                 <>
-                  <Ionicons name="refresh-outline" size={20} color="#fff" />
-                  <Text style={styles.btnPrimaryText}>Mark verified</Text>
+                  <Ionicons name="shield-checkmark-outline" size={18} color={colors.brandInk} />
+                  <Text style={[styles.linkText, { color: colors.brandInk }]}>Mark verified today</Text>
                 </>
               )}
-            </Pressable>
-          ) : null}
-
-          {admin ? (
-            <Pressable
-              style={[styles.btn, styles.btnDanger, deleteMutation.isPending && styles.btnOff]}
-              disabled={deleteMutation.isPending}
-              onPress={() => setConfirmDeleteOpen(true)}
-            >
-              <>
-                <Ionicons name="trash-outline" size={20} color="#fff" />
-                <Text style={styles.btnPrimaryText}>Delete listing</Text>
-              </>
             </Pressable>
           ) : null}
         </View>
       </ScrollView>
 
+      {showProposal && !pg ? (
+        <View style={[styles.bar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.barPrice}>{listing.price ? inr(listing.price) : 'On request'}<Text style={styles.barUnit}>{listing.price ? ' /seat/mo' : ''}</Text></Text>
+            <Text style={styles.barSub} numberOfLines={1}>{listing.seats ? `${listing.seats} seats · ` : ''}{listing.city}</Text>
+          </View>
+          {inProposal ? (
+            <Pressable style={styles.barGhost} onPress={() => router.push('/(tabs)/proposals/builder')}>
+              <Ionicons name="document-text-outline" size={18} color={colors.ink} />
+            </Pressable>
+          ) : null}
+          <Pressable style={[styles.barBtn, inProposal && styles.barBtnOn]} onPress={toggleProposal}>
+            <Ionicons name={inProposal ? 'checkmark-circle' : 'add-circle-outline'} size={19} color="#fff" />
+            <Text style={styles.barBtnText}>{inProposal ? 'In proposal' : 'Add to proposal'}</Text>
+          </Pressable>
+        </View>
+      ) : null}
+
       <GallerySheet
         visible={galleryOpen}
         photos={carouselPhotos}
         initialIndex={galleryIndex}
-        title={`${listing.operator} · ${listing.micro}`}
+        title={listing.operator}
         onClose={() => setGalleryOpen(false)}
-      />
-
-      <ConfirmDialog
-        visible={confirmDeleteOpen}
-        title="Delete listing"
-        message={`Delete “${listing.operator} · ${listing.micro}”? This cannot be undone.`}
-        confirmLabel="Delete"
-        busy={deleteMutation.isPending}
-        onCancel={() => { if (!deleteMutation.isPending) setConfirmDeleteOpen(false); }}
-        onConfirm={() => deleteMutation.mutate()}
       />
     </View>
   );
@@ -284,7 +294,7 @@ export default function ListingDetailScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.surface2 },
   scroll: { flex: 1 },
-  content: { padding: 16, paddingBottom: 40 },
+  content: { padding: 14 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 12, backgroundColor: colors.surface2 },
   error: { color: colors.danger, textAlign: 'center', fontSize: 15 },
   backBtn: {
@@ -293,29 +303,49 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
   },
   backBtnText: { color: colors.ink, fontWeight: '700' },
-  heroMeta: { marginBottom: 12, gap: 6 },
-  title: { fontSize: 20, fontWeight: '800', color: colors.ink },
-  sub: { fontSize: 14, color: colors.muted },
-  quick: { flexDirection: 'row', gap: 8, marginBottom: 16 },
-  quickCell: {
-    flex: 1, backgroundColor: colors.surface, borderRadius: 12, padding: 12,
-    borderWidth: 1, borderColor: colors.border,
+  hero: { marginTop: 4, marginBottom: 12, gap: 7 },
+  badges: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 },
+  hidden: { fontSize: 11, fontWeight: '800', color: '#fff', backgroundColor: '#555', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999, overflow: 'hidden' },
+  title: { fontSize: 25, fontWeight: '800', color: colors.ink, letterSpacing: -0.5, marginTop: 2 },
+  placeRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  place: { fontSize: 15, fontWeight: '600', color: colors.ink },
+  address: { fontSize: 13, color: colors.muted, lineHeight: 18 },
+  types: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 2 },
+  typeChip: {
+    fontSize: 12, fontWeight: '700', color: colors.brandInk, backgroundColor: colors.brandSoft,
+    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999, overflow: 'hidden',
   },
-  quickL: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', color: colors.faint },
-  quickN: { fontSize: 16, fontWeight: '800', color: colors.ink, marginTop: 4 },
-  quickU: { fontSize: 11, color: colors.muted },
-  actions: { gap: 10, marginTop: 8 },
-  btn: {
+  note: { flexDirection: 'row', gap: 10, alignItems: 'flex-start', borderRadius: 14, padding: 12, marginBottom: 12, backgroundColor: colors.surface },
+  noteText: { flex: 1, fontSize: 13, fontWeight: '600', lineHeight: 18 },
+  stats: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  stat: {
+    flex: 1, backgroundColor: colors.surface, borderRadius: 16, padding: 12,
+    shadowColor: '#0B2A14', shadowOpacity: 0.05, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 2,
+  },
+  statL: { fontSize: 10, fontWeight: '800', textTransform: 'uppercase', color: colors.faint, letterSpacing: 0.3 },
+  statN: { fontSize: 18, fontWeight: '800', color: colors.ink, marginTop: 4 },
+  statU: { fontSize: 11, color: colors.muted, marginTop: 1 },
+  links: { gap: 10, marginTop: 14 },
+  headerEdit: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: colors.brandSoft, marginRight: 4 },
+  headerEditText: { fontSize: 14, fontWeight: '800', color: colors.brandInk },
+  editBtn: { backgroundColor: colors.brand, borderColor: colors.brand },
+  linkBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    paddingVertical: 14, borderRadius: 12, backgroundColor: colors.surface,
-    borderWidth: 1, borderColor: colors.border,
+    paddingVertical: 14, borderRadius: 14, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
   },
-  btnPrimary: { backgroundColor: colors.brand, borderColor: colors.brand },
-  btnSuccess: { backgroundColor: colors.success, borderColor: colors.success },
-  btnVerify: { backgroundColor: colors.success, borderColor: colors.success },
-  btnEdit: { backgroundColor: colors.ink, borderColor: colors.ink },
-  btnDanger: { backgroundColor: colors.danger, borderColor: colors.danger },
-  btnPrimaryText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  btnText: { color: colors.ink, fontWeight: '700', fontSize: 15 },
+  linkText: { color: colors.ink, fontWeight: '700', fontSize: 15 },
   btnOff: { opacity: 0.6 },
+  bar: {
+    position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingHorizontal: 16, paddingTop: 12, backgroundColor: colors.surface,
+    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border,
+    shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 12, shadowOffset: { width: 0, height: -4 }, elevation: 10,
+  },
+  barPrice: { fontSize: 18, fontWeight: '800', color: colors.ink },
+  barUnit: { fontSize: 12, fontWeight: '600', color: colors.muted },
+  barSub: { fontSize: 12, color: colors.muted, marginTop: 1 },
+  barGhost: { width: 48, height: 48, borderRadius: 14, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
+  barBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 48, paddingHorizontal: 18, borderRadius: 14, backgroundColor: colors.brand },
+  barBtnOn: { backgroundColor: colors.success },
+  barBtnText: { color: '#fff', fontWeight: '800', fontSize: 15 },
 });
