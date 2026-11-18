@@ -18,7 +18,7 @@ const TIME_LIST = TIME_OPTIONS.map((t) => ({ id: t, name: t }));
 const timeValue = (v) => TIME_OPTIONS.find((t) => sameTime(t, v)) || v;
 
 /* ---------- 1. Basics ---------- */
-export function BasicsStep({ form, patch, options, isEdit, isAdmin }) {
+export function BasicsStep({ form, patch, options, isEdit }) {
   return (
     <>
       <TextField label="Space name" required value={form.name} onChange={(v) => patch('name', v)} placeholder="e.g. Awfis Sector 62" />
@@ -61,22 +61,12 @@ export function BasicsStep({ form, patch, options, isEdit, isAdmin }) {
 
       <Group title="On the website">
         <ToggleRow icon="eye-outline" label="Show on website" hint="Turn off to hide the space without deleting it" value={form.isActive} onChange={(v) => patch('isActive', v)} />
-        {isAdmin ? (
-          <ChoiceChips
-            label="Status"
-            hint="Only Approved spaces are live"
-            options={options.statuses.map((s) => ({ value: s.key, label: s.label.replace(' (live on website)', '') }))}
-            value={form.status}
-            onChange={(v) => patch('status', v)}
-          />
-        ) : (
+        {!isEdit ? (
           <View style={st.infoBox}>
             <Ionicons name="information-circle-outline" size={18} color={colors.muted} />
-            <Text style={st.infoText}>
-              {isEdit ? `Status: ${statusLabel(form.status)}. Only admins can change it.` : 'New spaces are saved as Pending until an admin approves them.'}
-            </Text>
+            <Text style={st.infoText}>New spaces are saved as Pending. Approve them from the listing page after saving.</Text>
           </View>
-        )}
+        ) : null}
         {isEdit ? (
           <TextField
             label="Web address"
@@ -91,7 +81,6 @@ export function BasicsStep({ form, patch, options, isEdit, isAdmin }) {
     </>
   );
 }
-const statusLabel = (k) => ({ approved: 'Approved', pending: 'Pending', inprogress: 'In progress', rejected: 'Rejected' }[k] || 'Pending');
 
 /* ---------- 2. Location ---------- */
 export function LocationStep({ form, setForm, options }) {
@@ -544,6 +533,19 @@ export function ContactsStep({ form, setForm, patch }) {
 
 /* ---------- 8. About ---------- */
 export function AboutStep({ form, patch }) {
+  if (form.vertical !== 'managed-office') {
+    return (
+      <TextField
+        label="Description"
+        hint="Shown on the website. Leave an empty line between paragraphs"
+        value={form.newDescriptionText}
+        onChange={(v) => patch('newDescriptionText', v)}
+        placeholder="What makes this space good: location, interiors, facilities, who it suits…"
+        multiline
+        lines={10}
+      />
+    );
+  }
   return (
     <>
       <TextField
@@ -570,13 +572,14 @@ export function AboutStep({ form, patch }) {
 
 /* ---------- 9. SEO ---------- */
 const SEO_BLOCKS = [
-  { key: 'seo', title: 'Coworking page', hint: 'Google title and description for this space' },
-  { key: 'newSeo', title: 'New website page', hint: 'Same, for the newer pages' },
+  // Old coworking SEO: the website no longer reads it, so it is shown only for managed offices.
+  { key: 'seo', title: 'Coworking page', hint: 'Google title and description for this space', moOnly: true },
+  { key: 'newSeo', title: 'Website page', hint: 'Google title and description for this space' },
   { key: 'virtualSeo', title: 'Virtual office page', hint: 'Only if the space sells virtual office' },
 ];
 
 export function SeoStep({ form, setForm }) {
-  const [open, setOpen] = useState('seo');
+  const [open, setOpen] = useState(form.vertical === 'managed-office' ? 'seo' : 'newSeo');
   const [social, setSocial] = useState({});
   const setS = (block, changes) => setForm((p) => ({ ...p, [block]: { ...p[block], ...changes } }));
 
@@ -586,7 +589,7 @@ export function SeoStep({ form, setForm }) {
         <Ionicons name="information-circle-outline" size={18} color={colors.muted} />
         <Text style={st.infoText}>Optional. Leave blank and the website uses the space name and description.</Text>
       </View>
-      {SEO_BLOCKS.filter((b) => form.vertical !== 'managed-office' || b.key !== 'virtualSeo').map((b) => {
+      {SEO_BLOCKS.filter((b) => (form.vertical === 'managed-office' ? b.key !== 'virtualSeo' : !b.moOnly)).map((b) => {
         const s = form[b.key];
         const isOpen = open === b.key;
         const filled = Boolean(s.title || s.description);

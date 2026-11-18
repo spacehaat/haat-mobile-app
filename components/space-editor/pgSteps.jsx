@@ -40,10 +40,9 @@ function MultiChips({ label, hint, options, value, onChange }) {
   );
 }
 
-const statusLabel = (k) => ({ approved: 'Approved', inprogress: 'In progress', rejected: 'Rejected' }[k] || 'In progress');
 
 /* ---------- 1. Basics ---------- */
-export function PgBasicsStep({ form, patch, options, isEdit, isAdmin }) {
+export function PgBasicsStep({ form, patch, options, isEdit }) {
   const auto = form.googleAuto || {};
   return (
     <>
@@ -61,22 +60,12 @@ export function PgBasicsStep({ form, patch, options, isEdit, isAdmin }) {
 
       <Group title="On the website">
         <ToggleRow icon="eye-outline" label="Show on website" hint="Turn off to hide the PG without deleting it" value={form.isActive} onChange={(v) => patch('isActive', v)} />
-        {isAdmin ? (
-          <ChoiceChips
-            label="Status"
-            hint="Only Approved PGs are live"
-            options={options.statuses.map((s) => ({ value: s.key, label: s.label.replace(' (live on website)', '') }))}
-            value={form.status}
-            onChange={(v) => patch('status', v)}
-          />
-        ) : (
+        {!isEdit ? (
           <View style={st.infoBox}>
             <Ionicons name="information-circle-outline" size={18} color={colors.muted} />
-            <Text style={st.infoText}>
-              {isEdit ? `Status: ${statusLabel(form.status)}. Only admins can change it.` : 'New PGs are saved as In progress until an admin approves them.'}
-            </Text>
+            <Text style={st.infoText}>New PGs are saved as In progress. Approve them from the listing page after saving.</Text>
           </View>
-        )}
+        ) : null}
         <ChoiceChips
           label="Google indexing"
           hint={auto.ok === false && auto.note ? `Automatic check: ${auto.note}` : 'Automatic keeps PGs with their own description and photos in Google'}

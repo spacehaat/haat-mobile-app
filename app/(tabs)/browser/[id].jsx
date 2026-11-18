@@ -63,6 +63,52 @@ const STATUS_NOTE = {
   rejected: 'Rejected on the website. Check with the team before sharing it with a client.',
 };
 
+const STATUS_ACTIONS = [
+  { key: 'approved', label: 'Approve', icon: 'checkmark-circle-outline' },
+  { key: 'pending', label: 'Pending', icon: 'time-outline' },
+  { key: 'inprogress', label: 'In progress', icon: 'sync-circle-outline' },
+  { key: 'rejected', label: 'Reject', icon: 'close-circle-outline' },
+];
+const STATUS_CONFIRM = {
+  approved: ['Approve this listing?', 'It goes live on the website within a few minutes.'],
+  rejected: ['Reject this listing?', 'It is taken off the website and out of the priority lists.'],
+};
+
+/** Admin status buttons on the listing page (not in the edit form). PGs have no separate "Pending". */
+function StatusActions({ current, pg, busy, pendingKey, onChange }) {
+  const actions = STATUS_ACTIONS.filter((a) => !(pg && a.key === 'pending'));
+  const press = (key) => {
+    if (key === current || busy) return;
+    const ask = STATUS_CONFIRM[key];
+    if (!ask) return onChange(key);
+    Alert.alert(ask[0], ask[1], [{ text: 'Cancel', style: 'cancel' }, { text: 'Yes', onPress: () => onChange(key) }]);
+  };
+  return (
+    <View style={styles.statusBox}>
+      <Text style={styles.statusTitle}>Listing status</Text>
+      <View style={styles.statusRow}>
+        {actions.map((a) => {
+          const on = a.key === current;
+          const tone = STATUS_COLORS[a.key];
+          return (
+            <Pressable
+              key={a.key}
+              onPress={() => press(a.key)}
+              disabled={busy}
+              style={[styles.statusBtn, on && { backgroundColor: tone.bg, borderColor: tone.text }, busy && !on && styles.btnOff]}
+            >
+              {busy && pendingKey === a.key ? <ActivityIndicator size="small" color={tone.text} /> : (
+                <Ionicons name={on ? tone.icon : a.icon} size={16} color={on ? tone.text : colors.muted} />
+              )}
+              <Text style={[styles.statusBtnText, on && { color: tone.text }]}>{on && a.key === 'approved' ? 'Approved' : on && a.key === 'rejected' ? 'Rejected' : a.label}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
 function Stat({ label, value, unit }) {
   return (
     <View style={styles.stat}>
@@ -104,6 +150,15 @@ function ListingDetailBody() {
       Alert.alert('Verified', 'Marked as verified today.');
     },
     onError: (err) => Alert.alert('Verify failed', err.message),
+  });
+
+  const statusMutation = useMutation({
+    mutationFn: (status) => mobileApi.setListingStatus(listingId, status),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(['listing', listingId], normalizeListingRecord(updated));
+      queryClient.invalidateQueries({ queryKey: ['listings'] });
+    },
+    onError: (err) => Alert.alert('Status not changed', err.message),
   });
 
   // On some Android builds, /browser/add (and /new, /edit) resolve as [id].
@@ -201,6 +256,16 @@ function ListingDetailBody() {
           </View>
         ) : null}
 
+        {admin && editable ? (
+          <StatusActions
+            current={listing.status?.key}
+            pg={pg}
+            busy={statusMutation.isPending}
+            pendingKey={statusMutation.variables}
+            onChange={(key) => statusMutation.mutate(key)}
+          />
+        ) : null}
+
         <View style={styles.stats}>
           <Stat label={pg ? 'Rent from' : 'Starting from'} value={listing.price ? inr(listing.price) : '—'} unit={listing.price ? (pg ? '/mo' : '/seat/mo') : 'on request'} />
           {pg ? (
@@ -292,6 +357,11 @@ export default function ListingDetailScreen() {
 }
 
 const styles = StyleSheet.create({
+  statusBox: { marginBottom: 12, padding: 12, borderRadius: 14, backgroundColor: '#fff', borderWidth: 1, borderColor: colors.border },
+  statusTitle: { fontSize: 13, fontWeight: '800', color: colors.muted, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.4 },
+  statusRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  statusBtn: { flexGrow: 1, flexBasis: '45%', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface2 || '#F5F5F3' },
+  statusBtnText: { fontSize: 14, fontWeight: '700', color: colors.ink },
   screen: { flex: 1, backgroundColor: colors.surface2 },
   scroll: { flex: 1 },
   content: { padding: 14 },

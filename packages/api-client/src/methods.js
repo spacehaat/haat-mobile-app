@@ -150,6 +150,12 @@ export function createApiMethods(request) {
       return data.verification;
     },
 
+    /** Approve / Pending / In progress / Reject (admins). status: approved | pending | inprogress | rejected */
+    async setListingStatus(id, status) {
+      const data = await request(`/api/v1/listings/${id}/status`, { method: 'POST', body: { status } });
+      return data.item;
+    },
+
     async verifyListing(id) {
       const data = await request(`/api/v1/listings/${id}/verify`, { method: 'POST' });
       return data.item;

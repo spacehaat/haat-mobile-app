@@ -119,6 +119,16 @@ export default function SpaceEditor({ spaceId, vertical: addVertical = 'coworkin
     }
   }, [isEdit, optionsQ.data, form]);
 
+  // New coworking spaces start with the common amenities ticked (set in the admin amenity list).
+  const amenityDefaultsApplied = useRef(false);
+  useEffect(() => {
+    if (isEdit || mo || pg || !form || amenityDefaultsApplied.current) return;
+    const defaults = optionsQ.data?.defaultAmenities;
+    if (!Array.isArray(defaults)) return;
+    amenityDefaultsApplied.current = true;
+    if (defaults.length && !(form.amenities || []).length) setForm((p) => ({ ...p, amenities: [...defaults] }));
+  }, [isEdit, mo, pg, optionsQ.data, form]);
+
   const update = useCallback((fn) => {
     setDirty(true);
     setError('');
@@ -157,7 +167,7 @@ export default function SpaceEditor({ spaceId, vertical: addVertical = 'coworkin
         const live = listing?.status?.key === 'approved';
         Alert.alert(
           mo ? 'Managed office added' : pg ? 'PG added' : 'Space added',
-          live ? 'It is live on the website.' : `Saved as ${pg ? 'In progress' : 'Pending'}. It goes live on the website once an admin approves it.`,
+          live ? 'It is live on the website.' : `Saved as ${pg ? 'In progress' : 'Pending'}. ${admin ? 'Approve it from the listing page to put it live.' : 'It goes live on the website once an admin approves it.'}`,
           [{ text: mo ? 'View office' : pg ? 'View PG' : 'View space', onPress: () => router.replace(`/(tabs)/browser/${id}`) }],
         );
       }
