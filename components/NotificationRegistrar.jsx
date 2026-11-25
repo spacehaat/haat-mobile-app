@@ -21,9 +21,19 @@ function openLeadFromNotification(leadId) {
   router.push(`/(tabs)/leads/${leadId}`);
 }
 
+/** A team member added an expense → admins land on it. */
+function openExpenseFromNotification(response) {
+  const data = response?.notification?.request?.content?.data || {};
+  if (data.type !== 'expense_created' || !data.expenseId) return false;
+  router.navigate('/(tabs)/expenses');
+  router.push(`/(tabs)/expenses/${String(data.expenseId)}`);
+  return true;
+}
+
 export default function NotificationRegistrar() {
   useEffect(() => {
     const sub = addNotificationResponseListener((response) => {
+      if (openExpenseFromNotification(response)) return;
       const leadId = leadIdFromNotificationResponse(response);
       if (leadId) openLeadFromNotification(leadId);
     });

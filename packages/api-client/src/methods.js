@@ -369,6 +369,73 @@ export function createApiMethods(request) {
       return data.items || [];
     },
 
+    // ---- Expenses (admins: everyone's; staff with expense access: their own)
+
+    async listExpenses({ month, from, to, categoryId, paidBy, person, settled, search, page = 1, limit = 30 } = {}) {
+      const params = new URLSearchParams();
+      params.set('page', String(page));
+      params.set('limit', String(limit));
+      if (month) params.set('month', month);
+      if (from) params.set('from', from);
+      if (to) params.set('to', to);
+      if (categoryId) params.set('categoryId', categoryId);
+      if (paidBy) params.set('paidBy', paidBy);
+      if (person) params.set('person', person);
+      if (settled) params.set('settled', settled);
+      if (search && search.trim()) params.set('search', search.trim());
+      return request(`/api/v1/expenses?${params}`);
+    },
+
+    async getExpenseSummary({ month, person } = {}) {
+      const params = new URLSearchParams();
+      if (month) params.set('month', month);
+      if (person) params.set('person', person);
+      return request(`/api/v1/expenses/summary?${params}`);
+    },
+
+    async getExpense(id) {
+      const data = await request(`/api/v1/expenses/${id}`);
+      return data.item;
+    },
+
+    async createExpense(payload) {
+      const data = await request('/api/v1/expenses', { method: 'POST', body: payload });
+      return data.item;
+    },
+
+    async updateExpense(id, payload) {
+      const data = await request(`/api/v1/expenses/${id}`, { method: 'PATCH', body: payload });
+      return data.item;
+    },
+
+    async deleteExpense(id) {
+      return request(`/api/v1/expenses/${id}`, { method: 'DELETE' });
+    },
+
+    async settleExpense(id, settled) {
+      const data = await request(`/api/v1/expenses/${id}/settle`, { method: 'POST', body: { settled } });
+      return data.item;
+    },
+
+    async listExpensePeople() {
+      return request('/api/v1/expenses/people');
+    },
+
+    async listExpenseCategories({ all = false } = {}) {
+      const data = await request(`/api/v1/expense-categories${all ? '?all=1' : ''}`);
+      return data.items || [];
+    },
+
+    async createExpenseCategory(payload) {
+      const data = await request('/api/v1/expense-categories', { method: 'POST', body: payload });
+      return data.item;
+    },
+
+    async updateExpenseCategory(id, payload) {
+      const data = await request(`/api/v1/expense-categories/${id}`, { method: 'PATCH', body: payload });
+      return data.item;
+    },
+
     async registerDevice({ token, platform }) {
       await request('/api/v1/devices/register', {
         method: 'POST',

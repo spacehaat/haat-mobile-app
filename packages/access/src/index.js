@@ -32,6 +32,7 @@ export {
   canSeeFreshness,
   canSeeUsersTab,
   canSeeDashboardTab,
+  canSeeExpensesTab,
   defaultTabPathForUser,
   defaultPathForUser,
   visibleScreensForUser,

@@ -4,7 +4,8 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { useBiometric } from '../../context/BiometricContext';
-import { canSeeBrowserTab, canSeeFreshness, canSeeLeadsTab } from '../../lib/access';
+import { canSeeBrowserTab, canSeeFreshness, canSeeLeadsTab, canSeeUsersTab } from '../../lib/access';
+import { formatRupees } from '../../lib/expenses';
 import RequireScreen from '../../components/RequireScreen';
 import { mobileApi } from '../../lib/api';
 import { greetingName } from '../../lib/format';
@@ -18,6 +19,12 @@ export default function DashboardScreen() {
   const { data: stats, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: () => mobileApi.getDashboardStats(),
+  });
+
+  // Dashboard is admin-only, so this is the whole company's spend this month.
+  const { data: spend, isLoading: spendLoading, refetch: refetchSpend } = useQuery({
+    queryKey: ['expense-summary', 'dashboard'],
+    queryFn: () => mobileApi.getExpenseSummary(),
   });
 
   const listings = stats?.listings;
@@ -40,7 +47,7 @@ export default function DashboardScreen() {
     <ScrollView
       style={styles.screen}
       contentContainerStyle={styles.content}
-      refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.brand} />}
+      refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => { refetch(); refetchSpend(); }} tintColor={colors.brand} />}
     >
       <Text style={styles.greeting}>Good morning, {greetingName(user?.name)} 👋</Text>
       <Text style={styles.lead}>
@@ -90,6 +97,35 @@ export default function DashboardScreen() {
         />
       </View>
 
+      <Text style={styles.sectionTitle}>Expenses</Text>
+      <View style={styles.grid}>
+        <KpiCard
+          label="Spent this month"
+          value={formatRupees(spend?.total)}
+          sub={spend?.count ? `${spend.count} expenses · ${formatRupees(spend?.today?.total)} today` : 'Nothing added yet'}
+          loading={spendLoading}
+          onPress={() => router.push('/(tabs)/expenses')}
+        />
+        <KpiCard
+          label="To pay back"
+          value={formatRupees(spend?.toSettle?.total)}
+          sub={spend?.toSettle?.count ? `${spend.toSettle.count} expenses paid by staff` : 'All settled'}
+          loading={spendLoading}
+          onPress={() => router.push('/(tabs)/expenses')}
+        />
+      </View>
+
+      {canSeeUsersTab(user) ? (
+        <Pressable style={[styles.settingRow, { marginBottom: 10 }]} onPress={() => router.push('/(tabs)/users')}>
+          <Ionicons name="shield-outline" size={22} color={colors.brand} />
+          <View style={styles.settingBody}>
+            <Text style={styles.settingTitle}>Team & access</Text>
+            <Text style={styles.settingSub}>Add people and choose what they can use, including expenses</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={colors.faint} />
+        </Pressable>
+      ) : null}
+
       {bioAvailable ? (
         <Pressable style={styles.settingRow} onPress={toggleBiometric}>
           <Ionicons name="finger-print-outline" size={22} color={colors.brand} />
@@ -111,6 +147,7 @@ const styles = StyleSheet.create({
   greeting: { fontSize: 24, fontWeight: '800', color: colors.ink, marginBottom: 6 },
   lead: { fontSize: 14, color: colors.muted, lineHeight: 20, marginBottom: 18 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
+  sectionTitle: { fontSize: 13, fontWeight: '800', color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
   settingRow: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     backgroundColor: colors.surface, borderRadius: 14, padding: 14,

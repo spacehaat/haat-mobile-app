@@ -16,6 +16,8 @@ export const SCREENS = {
   proposal: { permission: PERMISSIONS.PROPOSALS_WRITE },
   proposals: { permission: PERMISSIONS.PROPOSALS_READ },
   leads: { permission: PERMISSIONS.LEADS_READ },
+  // Admins see every expense; staff with expense access add and see only their own.
+  expenses: { permission: PERMISSIONS.EXPENSES_WRITE },
 };
 
 /** Expo Router tab paths (mobile). */
@@ -26,6 +28,7 @@ export const MOBILE_TAB_PATHS = {
   match: '/(tabs)/match',
   proposals: '/(tabs)/proposals',
   users: '/(tabs)/users',
+  expenses: '/(tabs)/expenses',
 };
 
 /** Web app paths — kept here so both clients share screen ids. */
@@ -42,7 +45,7 @@ export const WEB_PATHS = {
   users: '/users',
 };
 
-const TAB_ORDER = ['dashboard', 'browser', 'leads', 'match', 'proposals', 'users'];
+const TAB_ORDER = ['dashboard', 'browser', 'leads', 'match', 'proposals', 'expenses', 'users'];
 
 export function canSeeScreen(user, screen, options = {}) {
   if (!user) return false;
@@ -82,6 +85,10 @@ export function canSeeFreshness(user) {
 
 export function canSeeUsersTab(user) {
   return canSeeScreen(user, 'users');
+}
+
+export function canSeeExpensesTab(user) {
+  return canSeeScreen(user, 'expenses');
 }
 
 export function canSeeDashboardTab(user) {

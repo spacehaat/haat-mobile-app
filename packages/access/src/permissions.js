@@ -12,6 +12,7 @@ export const PERMISSIONS = {
   LEADS_WRITE: 'leads:write',
   LEADS_ASSIGN: 'leads:assign',
   USERS_MANAGE: 'users:manage',
+  EXPENSES_WRITE: 'expenses:write',
 };
 
 export const ALL_PERMISSIONS = Object.values(PERMISSIONS);
@@ -34,6 +35,7 @@ export const PERM_LABELS = {
   [PERMISSIONS.LEADS_WRITE]: 'Manage leads',
   [PERMISSIONS.LEADS_ASSIGN]: 'Assign leads',
   [PERMISSIONS.USERS_MANAGE]: 'Manage users',
+  [PERMISSIONS.EXPENSES_WRITE]: 'Add own expenses',
 };
 
 export function permissionLabel(permission) {

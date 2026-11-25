@@ -6,10 +6,12 @@ import LoadingScreen from '../../components/ui/LoadingScreen';
 import {
   canSeeBrowserTab,
   canSeeDashboardTab,
+  canSeeExpensesTab,
   canSeeLeadsTab,
   canSeeMatchTab,
   canSeeProposalsTab,
   canSeeUsersTab,
+  isAdmin,
 } from '../../lib/access';
 import { colors } from '../../constants/theme';
 
@@ -24,7 +26,9 @@ export default function TabsLayout() {
   const showLeads = canSeeLeadsTab(user);
   const showMatch = canSeeMatchTab(user);
   const showProposals = canSeeProposalsTab(user);
-  const showUsers = canSeeUsersTab(user);
+  const showExpenses = canSeeExpensesTab(user);
+  // Admins open Team from the Dashboard, which keeps the bottom bar at six tabs with Expenses added.
+  const showUsers = canSeeUsersTab(user) && !isAdmin(user);
 
   const confirmSignOut = () => {
     Alert.alert(
@@ -95,6 +99,15 @@ export default function TabsLayout() {
           headerShown: false,
           href: showProposals ? undefined : null,
           tabBarIcon: ({ color, size }) => <Ionicons name="document-text-outline" size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="expenses"
+        options={{
+          title: 'Expenses',
+          headerShown: false,
+          href: showExpenses ? undefined : null,
+          tabBarIcon: ({ color, size }) => <Ionicons name="wallet-outline" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
