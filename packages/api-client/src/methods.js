@@ -398,6 +398,11 @@ export function createApiMethods(request) {
       return data.item;
     },
 
+    /** { text, subject, hasPhotos } for ids, clientName, channel ('whatsapp' | 'email'), withAddress. */
+    getVirtualOfficeProposal(body) {
+      return request('/api/v1/virtual-offices/proposal', { method: 'POST', body });
+    },
+
     deleteVirtualOffice(id) {
       return request(`/api/v1/virtual-offices/${encodeURIComponent(id)}`, { method: 'DELETE' });
     },

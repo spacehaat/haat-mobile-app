@@ -25,12 +25,19 @@ const SORTS = [
   { key: 'updated_on', label: 'Recently updated', orderBy: '-1' },
 ];
 
-function VoCard({ vo, showCost }) {
+function VoCard({ vo, showCost, selecting, selected, onToggle }) {
   const amenities = (vo.amenityList || []).slice(0, 3);
   const more = (vo.amenityList || []).length - amenities.length;
   return (
-    <Pressable style={styles.card} onPress={() => router.push(`/(tabs)/browser/vo/${vo.id}`)}>
+    <Pressable
+      style={[styles.card, selected && { borderColor: V.color, backgroundColor: '#F4FBFA' }]}
+      onPress={() => (selecting ? onToggle(vo.id) : router.push(`/(tabs)/browser/vo/${vo.id}`))}
+      onLongPress={() => onToggle(vo.id)}
+    >
       <View style={styles.cardTop}>
+        {selecting ? (
+          <Ionicons name={selected ? 'checkbox' : 'square-outline'} size={22} color={selected ? V.color : colors.faint} />
+        ) : null}
         <View style={[styles.cardIcon, { backgroundColor: V.soft }]}>
           <Ionicons name="mail-outline" size={18} color={V.color} />
         </View>
@@ -97,6 +104,14 @@ export default function VirtualOfficeList({ header }) {
   const [debounced, setDebounced] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  // Picked for a proposal; kept across pages and filters.
+  const [picked, setPicked] = useState([]);
+  const [selecting, setSelecting] = useState(false);
+  const toggle = useCallback((id) => {
+    setSelecting(true);
+    setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id].slice(0, 15)));
+  }, []);
+  const stopSelecting = () => { setSelecting(false); setPicked([]); };
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(search.trim()), 350);
@@ -132,7 +147,10 @@ export default function VirtualOfficeList({ header }) {
   const items = data?.items || [];
   const total = data?.total || 0;
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
-  const renderItem = useCallback(({ item }) => <VoCard vo={item} showCost={admin} />, [admin]);
+  const renderItem = useCallback(
+    ({ item }) => <VoCard vo={item} showCost={admin} selecting={selecting} selected={picked.includes(item.id)} onToggle={toggle} />,
+    [admin, selecting, picked, toggle],
+  );
 
   const listHeader = (
     <View style={styles.header}>
@@ -182,14 +200,22 @@ export default function VirtualOfficeList({ header }) {
         })}
       </ScrollView>
 
-      <Text style={styles.count}>
-        {isLoading ? 'Loading virtual offices…' : `${total.toLocaleString('en-IN')} ${total === 1 ? V.one : V.many}`}
-      </Text>
+      <View style={styles.countRow}>
+        <Text style={styles.count}>
+          {isLoading ? 'Loading virtual offices…' : `${total.toLocaleString('en-IN')} ${total === 1 ? V.one : V.many}`}
+        </Text>
+        <Pressable style={styles.selectBtn} onPress={() => (selecting ? stopSelecting() : setSelecting(true))} hitSlop={6}>
+          <Ionicons name={selecting ? 'close' : 'paper-plane-outline'} size={14} color={V.color} />
+          <Text style={styles.selectText}>{selecting ? 'Cancel' : 'Send proposal'}</Text>
+        </Pressable>
+      </View>
+      {selecting ? <Text style={styles.selectHint}>Tap the offices to include, then send.</Text> : null}
       {error ? <Text style={styles.error}>{error.message}</Text> : null}
     </View>
   );
 
   return (
+    <View style={{ flex: 1 }}>
     <FlatList
       style={{ flex: 1 }}
       data={items}
@@ -222,6 +248,16 @@ export default function VirtualOfficeList({ header }) {
         />
       )}
     />
+      {selecting && picked.length ? (
+        <View style={styles.sendBar}>
+          <Text style={styles.sendCount}>{picked.length} selected</Text>
+          <Pressable style={styles.sendBtn} onPress={() => router.push(`/(tabs)/browser/vo/proposal?ids=${picked.join(',')}`)}>
+            <Ionicons name="paper-plane" size={16} color="#fff" />
+            <Text style={styles.sendText}>Send proposal</Text>
+          </Pressable>
+        </View>
+      ) : null}
+    </View>
   );
 }
 
@@ -247,7 +283,18 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: colors.border,
   },
   chipText: { fontSize: 12.5, fontWeight: '600', color: colors.muted },
-  count: { fontSize: 13, fontWeight: '700', color: colors.ink, marginBottom: 8, marginTop: 2 },
+  countRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, marginTop: 2 },
+  count: { flex: 1, fontSize: 13, fontWeight: '700', color: colors.ink },
+  selectBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: V.soft },
+  selectText: { fontSize: 12.5, fontWeight: '800', color: V.color },
+  selectHint: { fontSize: 12, color: colors.muted, marginBottom: 8 },
+  sendBar: {
+    flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 10,
+    backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border,
+  },
+  sendCount: { flex: 1, fontSize: 14, fontWeight: '800', color: colors.ink },
+  sendBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: V.color, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 11 },
+  sendText: { color: '#fff', fontWeight: '800', fontSize: 14 },
   error: { color: colors.danger, marginBottom: 8 },
   card: { backgroundColor: colors.surface, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: colors.border },
   cardTop: { flexDirection: 'row', alignItems: 'center', gap: 10 },

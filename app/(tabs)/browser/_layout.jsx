@@ -71,6 +71,13 @@ export default function BrowserLayout() {
         }}
       />
       <Stack.Screen
+        name="vo/proposal"
+        options={{
+          title: 'Send proposal',
+          headerLeft: () => <HeaderBackButton />,
+        }}
+      />
+      <Stack.Screen
         name="vo/edit"
         options={{
           title: 'Virtual office',

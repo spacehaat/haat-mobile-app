@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator, Alert, Image, Linking, Share, RefreshControl,
+  View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator, Alert, Image, Linking, RefreshControl,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -46,17 +46,6 @@ export default function VirtualOfficeDetailScreen() {
 
   const phone = vo.phoneNumber?.replace(/[^\d+]/g, '');
   const place = [vo.locality, vo.city].filter(Boolean).join(', ');
-
-  const share = () => {
-    const lines = [
-      `${vo.spaceName}, ${place}`,
-      vo.sellingPriceInr ? `Virtual office: ${formatRupees(vo.priceAfterCouponInr || vo.sellingPriceInr)} / year (${formatRupees(vo.sellingMonthlyPriceInr)} / month)` : 'Virtual office: price on request',
-      vo.amenityList?.length ? `Includes: ${vo.amenityList.join(', ')}` : '',
-      vo.couponCode ? `Coupon ${vo.couponCode}: ${vo.couponPercentage}% off` : '',
-      vo.fullAddress ? `Address: ${vo.fullAddress}` : '',
-    ].filter(Boolean);
-    Share.share({ message: lines.join('\n') });
-  };
 
   const remove = () => {
     Alert.alert('Delete virtual office?', `${vo.spaceName} · ${vo.city}\nSwitching it to Inactive keeps the record instead.`, [
@@ -130,9 +119,9 @@ export default function VirtualOfficeDetailScreen() {
               <Text style={styles.actionTextOn}>Call</Text>
             </Pressable>
           ) : null}
-          <Pressable style={styles.action} onPress={share}>
-            <Ionicons name="share-social-outline" size={16} color={colors.ink} />
-            <Text style={styles.actionText}>Share</Text>
+          <Pressable style={styles.action} onPress={() => router.push(`/(tabs)/browser/vo/proposal?ids=${vo.id}`)}>
+            <Ionicons name="paper-plane-outline" size={16} color={colors.ink} />
+            <Text style={styles.actionText}>Proposal</Text>
           </Pressable>
           {canManageInventory(user) ? (
             <Pressable style={styles.action} onPress={() => router.push(`/(tabs)/browser/vo/edit?id=${vo.id}`)}>
