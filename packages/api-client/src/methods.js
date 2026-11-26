@@ -371,6 +371,37 @@ export function createApiMethods(request) {
 
     // ---- Expenses (admins: everyone's; staff with expense access: their own)
 
+    async listVirtualOffices(filters = {}) {
+      const params = new URLSearchParams();
+      Object.entries(filters).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && v !== '') params.set(k, String(v));
+      });
+      return request(`/api/v1/virtual-offices?${params.toString()}`);
+    },
+
+    getVirtualOfficeStats() {
+      return request('/api/v1/virtual-offices/stats');
+    },
+
+    async getVirtualOffice(id) {
+      const data = await request(`/api/v1/virtual-offices/${encodeURIComponent(id)}`);
+      return data.item;
+    },
+
+    async createVirtualOffice(body) {
+      const data = await request('/api/v1/virtual-offices', { method: 'POST', body });
+      return data.item;
+    },
+
+    async updateVirtualOffice(id, body) {
+      const data = await request(`/api/v1/virtual-offices/${encodeURIComponent(id)}`, { method: 'PATCH', body });
+      return data.item;
+    },
+
+    deleteVirtualOffice(id) {
+      return request(`/api/v1/virtual-offices/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    },
+
     async listExpenses({ month, from, to, categoryId, paidBy, person, settled, search, page = 1, limit = 30 } = {}) {
       const params = new URLSearchParams();
       params.set('page', String(page));

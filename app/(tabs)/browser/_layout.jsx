@@ -64,6 +64,20 @@ export default function BrowserLayout() {
         }}
       />
       <Stack.Screen
+        name="vo/[id]"
+        options={{
+          title: 'Virtual office',
+          headerLeft: () => <HeaderBackButton />,
+        }}
+      />
+      <Stack.Screen
+        name="vo/edit"
+        options={{
+          title: 'Virtual office',
+          headerLeft: () => <HeaderBackButton />,
+        }}
+      />
+      <Stack.Screen
         name="freshness"
         options={{
           title: 'Freshness',

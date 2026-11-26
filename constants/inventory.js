@@ -5,7 +5,7 @@ export { PAGE_SIZE, DEFAULT_PAGE_SIZE };
 
 /**
  * The inventory sections. Coworking = the website's /coworking spaces (green),
- * managed offices = /managed-office (indigo), PGs = /coliving (orange). Colours + icons keep them apart.
+ * managed offices = /managed-office (indigo), PGs = /coliving (orange), virtual offices (teal). Colours + icons keep them apart.
  */
 export const VERTICALS = {
   coworking: {
@@ -47,8 +47,22 @@ export const VERTICALS = {
     border: '#FDBA74',
     blurb: 'Rooms for students & professionals',
   },
+  // Kept apart from coworking: business-address plans, with their own list and form.
+  'virtual-office': {
+    key: 'virtual-office',
+    label: 'Virtual office',
+    short: 'Virtual',
+    plural: 'Virtual offices',
+    one: 'virtual office',
+    many: 'virtual offices',
+    icon: 'mail',
+    color: '#00796B',
+    soft: '#E0F2F1',
+    border: '#80CBC4',
+    blurb: 'Business address, GST & mail handling',
+  },
 };
-export const VERTICAL_LIST = [VERTICALS.coworking, VERTICALS['managed-office'], VERTICALS.coliving];
+export const VERTICAL_LIST = [VERTICALS.coworking, VERTICALS['managed-office'], VERTICALS.coliving, VERTICALS['virtual-office']];
 export const verticalOf = (listing) => VERTICALS[listing?.vertical] || VERTICALS.coworking;
 
 /** Managed office seat types (ManagedOffice.plans.seat_type). */

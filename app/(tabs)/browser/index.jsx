@@ -15,6 +15,7 @@ import {
 import ListingCard from '../../../components/ui/ListingCard';
 import InventoryFiltersModal, { INITIAL_FILTER } from '../../../components/ui/InventoryFiltersModal';
 import ListPagination from '../../../components/ui/ListPagination';
+import VirtualOfficeList from '../../../components/virtual-office/VirtualOfficeList';
 import {
   buildListingFilters, countActiveFilters, normalizeListing, DEFAULT_PAGE_SIZE,
   LISTING_STATUSES, STATUS_COLORS, VERTICALS, VERTICAL_LIST,
@@ -32,6 +33,7 @@ export default function BrowserScreen() {
   const cityOptions = useMemo(() => cityOptionsForUser(user), [user]);
   const [vertical, setVertical] = useState('coworking');
   const V = VERTICALS[vertical];
+  const isVo = vertical === 'virtual-office';
   const [city, setCity] = useState('All cities');
   const [status, setStatus] = useState('all');
   const [bFilter, setBFilter] = useState(INITIAL_FILTER);
@@ -66,7 +68,7 @@ export default function BrowserScreen() {
             </Pressable>
           ) : null}
           {canManageInventory(user) ? (
-            <Pressable onPress={() => router.push(`/(tabs)/browser/add?vertical=${vertical}`)} style={[styles.addBtn, { backgroundColor: V.color }]} hitSlop={6}>
+            <Pressable onPress={() => router.push(isVo ? '/(tabs)/browser/vo/edit' : `/(tabs)/browser/add?vertical=${vertical}`)} style={[styles.addBtn, { backgroundColor: V.color }]} hitSlop={6}>
               <Ionicons name="add" size={18} color="#fff" />
               <Text style={styles.addBtnText}>Add</Text>
             </Pressable>
@@ -74,7 +76,7 @@ export default function BrowserScreen() {
         </View>
       ),
     });
-  }, [navigation, user, proposalCount, showProposal, vertical, V.color]);
+  }, [navigation, user, proposalCount, showProposal, vertical, V.color, isVo]);
 
   const onSearchChange = useCallback((text) => {
     setSearch(text);
@@ -94,6 +96,7 @@ export default function BrowserScreen() {
     queryKey,
     queryFn: () => mobileApi.listListings(buildListingFilters(bFilter, city, debouncedSearch, page, pageSize, status, vertical)),
     placeholderData: (prev) => prev,
+    enabled: !isVo,
   });
   const { data: meta } = useQuery({
     queryKey: ['listings-meta'],
@@ -128,8 +131,7 @@ export default function BrowserScreen() {
     setStatus('all');
   };
 
-  const listHeader = (
-    <View style={styles.header}>
+  const verticalSwitch = (
       <View style={styles.vSwitch}>
         {VERTICAL_LIST.map((v) => {
           const on = v.key === vertical;
@@ -144,13 +146,18 @@ export default function BrowserScreen() {
               <View style={[styles.vIcon, { backgroundColor: on ? 'rgba(255,255,255,0.2)' : v.soft }]}>
                 <Ionicons name={on ? v.icon : `${v.icon}-outline`} size={18} color={on ? '#fff' : v.color} />
               </View>
-              <View style={{ flex: 1 }}>
+              <View style={{ alignSelf: 'stretch' }}>
                 <Text style={[styles.vLabel, on && { color: '#fff' }]} numberOfLines={1}>{v.short || v.plural}</Text>
               </View>
             </Pressable>
           );
         })}
       </View>
+  );
+
+  const listHeader = (
+    <View style={styles.header}>
+      {verticalSwitch}
 
       <View style={styles.searchRow}>
         <View style={styles.searchWrap}>
@@ -226,6 +233,14 @@ export default function BrowserScreen() {
     </View>
   );
 
+  if (isVo) {
+    return (
+      <View style={styles.screen}>
+        <VirtualOfficeList header={verticalSwitch} />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.screen}>
       <FlatList
@@ -300,13 +315,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.brand, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6, marginRight: 4,
   },
   propBadgeText: { color: '#fff', fontWeight: '800', fontSize: 12 },
-  vSwitch: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  vSwitch: { flexDirection: 'row', gap: 6, marginBottom: 12 },
   vCard: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', gap: 7, paddingVertical: 9, paddingHorizontal: 8, borderRadius: 14,
+    flex: 1, alignItems: 'center', gap: 4, paddingVertical: 8, paddingHorizontal: 4, borderRadius: 14,
     backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
   },
   vIcon: { width: 30, height: 30, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
-  vLabel: { fontSize: 13.5, fontWeight: '800', color: colors.ink },
+  vLabel: { fontSize: 12.5, fontWeight: '800', color: colors.ink, textAlign: 'center' },
   vBlurb: { fontSize: 10.5, color: colors.muted, marginTop: 1 },
   searchRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
   searchWrap: { flex: 1, position: 'relative' },
