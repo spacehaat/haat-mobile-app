@@ -4,6 +4,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import {
   SPACE_TYPES, SEAT_TYPES, AMENITIES, MIN_SEAT_TIERS, MAX_PRICE_TIERS, INITIAL_FILTER, SORTS, VERTICALS, PG_GENDERS,
+  OFFICE_TYPES, PO_RENT_TIERS,
 } from '../../constants/inventory';
 import { colors } from '../../constants/theme';
 import ModalSafeArea from './ModalSafeArea';
@@ -38,6 +39,7 @@ export default function InventoryFiltersModal({
 }) {
   const mo = vertical === 'managed-office';
   const pg = vertical === 'coliving';
+  const po = vertical === 'private-office';
   const v = VERTICALS[vertical] || VERTICALS.coworking;
   const amenityList = amenityOptions?.length ? amenityOptions : AMENITIES;
   const set = (key, val) => onChange({ ...filter, [key]: val });
@@ -76,7 +78,15 @@ export default function InventoryFiltersModal({
             />
           </FilterGroup>
 
-          {pg ? (
+          {po ? (
+            <FilterGroup label="Furnishing">
+              <OptRow
+                options={[['All', 'All'], ...OFFICE_TYPES.map((t) => [t.key, t.label])]}
+                value={filter.officeType || 'All'}
+                onChange={(val) => set('officeType', val)}
+              />
+            </FilterGroup>
+          ) : pg ? (
             <FilterGroup label="PG for">
               <OptRow
                 options={[['All', 'All'], ...PG_GENDERS.map((g) => [g, g])]}
@@ -110,7 +120,7 @@ export default function InventoryFiltersModal({
             />
           </FilterGroup>
 
-          {pg ? null : (
+          {pg || po ? null : (
           <FilterGroup label="Min seats">
             <OptRow
               options={MIN_SEAT_TIERS.map((n) => [n, n === 0 ? 'Any' : `${n}+ seats`])}
@@ -120,9 +130,9 @@ export default function InventoryFiltersModal({
           </FilterGroup>
           )}
 
-          <FilterGroup label={pg ? 'Max rent / month' : 'Max price / seat'}>
+          <FilterGroup label={pg || po ? 'Max rent / month' : 'Max price / seat'}>
             <OptRow
-              options={MAX_PRICE_TIERS.map(({ value, label }) => [value, label])}
+              options={(po ? PO_RENT_TIERS : MAX_PRICE_TIERS).map(({ value, label }) => [value, label])}
               value={filter.maxPrice ?? null}
               onChange={(v) => set('maxPrice', v)}
             />
@@ -138,7 +148,7 @@ export default function InventoryFiltersModal({
             </FilterGroup>
           ) : null}
 
-          {mo || pg ? null : (
+          {mo || pg || po ? null : (
           <FilterGroup label="Quick flags">
             <View style={styles.opts}>
               {[

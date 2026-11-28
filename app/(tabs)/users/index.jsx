@@ -12,6 +12,7 @@ import {
   PERM_LABELS, permissionLabel, DEFAULT_MEMBER_PERMISSIONS,
 } from '../../../lib/access';
 import { colors } from '../../../constants/theme';
+import { expandUserSpaceTypes, userSpaceTypeLabel } from '../../../constants/spaceTypes';
 
 export default function UsersScreen() {
   const { user: authUser, permissionCatalog } = useAuth();
@@ -112,7 +113,7 @@ export default function UsersScreen() {
                 </Text>
                 <Text style={styles.metaLine}>
                   <Text style={styles.metaLabel}>Space types: </Text>
-                  {u.role === 'admin' ? 'All types' : (u.spaceTypes?.length ? u.spaceTypes.join(', ') : '—')}
+                  {u.role === 'admin' ? 'All types' : (u.spaceTypes?.length ? expandUserSpaceTypes(u.spaceTypes).map(userSpaceTypeLabel).join(', ') : '—')}
                 </Text>
                 <Text style={styles.metaLine}>
                   <Text style={styles.metaLabel}>Access: </Text>

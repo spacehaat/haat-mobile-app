@@ -18,7 +18,7 @@ const TIME_LIST = TIME_OPTIONS.map((t) => ({ id: t, name: t }));
 const timeValue = (v) => TIME_OPTIONS.find((t) => sameTime(t, v)) || v;
 
 /* ---------- 1. Basics ---------- */
-export function BasicsStep({ form, patch, options, isEdit }) {
+export function BasicsStep({ form, patch, options, isEdit, canEnable }) {
   return (
     <>
       <TextField label="Space name" required value={form.name} onChange={(v) => patch('name', v)} placeholder="e.g. Awfis Sector 62" />
@@ -60,7 +60,9 @@ export function BasicsStep({ form, patch, options, isEdit }) {
       {isEdit && form.id ? <VerificationBox listingId={form.id} value={form.verification} /> : null}
 
       <Group title="On the website">
-        <ToggleRow icon="eye-outline" label="Show on website" hint="Turn off to hide the space without deleting it" value={form.isActive} onChange={(v) => patch('isActive', v)} />
+        {canEnable ? (
+          <ToggleRow icon="eye-outline" label="Show on website" hint="Turn off to hide the space without deleting it" value={form.isActive} onChange={(v) => patch('isActive', v)} />
+        ) : null}
         {!isEdit ? (
           <View style={st.infoBox}>
             <Ionicons name="information-circle-outline" size={18} color={colors.muted} />
@@ -517,6 +519,8 @@ export function ContactsStep({ form, setForm, patch }) {
         </Pressable>
       </Group>
 
+      {form.vertical === 'private-office' ? null : (
+      <>
       <Group title="Space email & website">
         <TextField label="Email" value={form.email} onChange={(v) => patch('email', v)} keyboardType="email-address" placeholder="hello@space.com" />
         <TextField label="Website" value={form.website} onChange={(v) => patch('website', v)} keyboardType="url" placeholder="https://…" />
@@ -527,6 +531,8 @@ export function ContactsStep({ form, setForm, patch }) {
         <TextField label="Facebook" value={form.social.facebook} onChange={(v) => setSocial('facebook', v)} keyboardType="url" placeholder="https://facebook.com/…" />
         <TextField label="X (Twitter)" value={form.social.twitter} onChange={(v) => setSocial('twitter', v)} keyboardType="url" placeholder="https://x.com/…" />
       </Group>
+      </>
+      )}
     </>
   );
 }
@@ -537,7 +543,7 @@ export function AboutStep({ form, patch }) {
     return (
       <TextField
         label="Description"
-        hint="Shown on the website. Leave an empty line between paragraphs"
+        hint={form.vertical === 'private-office' ? 'Used in proposals. Leave an empty line between paragraphs' : 'Shown on the website. Leave an empty line between paragraphs'}
         value={form.newDescriptionText}
         onChange={(v) => patch('newDescriptionText', v)}
         placeholder="What makes this space good: location, interiors, facilities, who it suits…"

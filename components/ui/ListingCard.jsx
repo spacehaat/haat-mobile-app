@@ -43,7 +43,7 @@ export function VerticalTag({ listing, onImage, small }) {
   );
 }
 
-/** A website coworking space, managed office or PG in the inventory list. */
+/** A website coworking space, managed office, private office or PG in the inventory list. */
 export default function ListingCard({
   listing, onPress, inProposal, onToggleProposal, showProposalAction, compact,
 }) {
@@ -53,7 +53,8 @@ export default function ListingCard({
   const v = verticalOf(listing);
   const mo = v.key === 'managed-office';
   const pg = v.key === 'coliving';
-  const types = mo
+  const po = v.key === 'private-office';
+  const types = po ? [listing.privateOffice?.officeType].filter(Boolean) : mo
     ? (listing.office?.seatTypes || [])
     : pg ? (listing.spaceTypes || [])
       : (listing.spaceTypes?.length ? listing.spaceTypes : [listing.type]).filter(Boolean);
@@ -63,8 +64,12 @@ export default function ListingCard({
   ].filter(Boolean).join(' · ') : pg ? [
     listing.pg?.gender ? `For ${listing.pg.gender === 'Co-living' ? 'everyone (co-living)' : listing.pg.gender.toLowerCase()}` : '',
     listing.pg?.food && listing.pg.food !== 'Not included' ? `Food: ${listing.pg.food}` : 'No food',
+  ].filter(Boolean).join(' · ') : po ? [
+    listing.privateOffice?.areaSqft ? `${listing.privateOffice.areaSqft.toLocaleString('en-IN')} sq ft` : '',
+    listing.privateOffice?.floor ? `Floor ${listing.privateOffice.floor}` : '',
+    listing.privateOffice?.securityDeposit ? `Deposit ${listing.privateOffice.securityDeposit}` : '',
   ].filter(Boolean).join(' · ') : '';
-  const unit = pg ? ' /mo' : ' /seat/mo';
+  const unit = pg || po ? ' /mo' : ' /seat/mo';
   const toggle = () => onToggleProposal?.(id, listing);
 
   if (compact) {

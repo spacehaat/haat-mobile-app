@@ -76,8 +76,10 @@ export default function ListingDetailSections({ listing, canSeeInternal }) {
   const v = verticalOf(listing);
   const mo = v.key === 'managed-office';
   const pg = v.key === 'coliving';
+  const po = v.key === 'private-office';
   const P = listing.pg || {};
   const office = listing.office || {};
+  const PO = listing.privateOffice || {};
   const I = p.identity || {};
   const O = p.operations || {};
   const F = p.contactsMedia || {};
@@ -138,6 +140,34 @@ export default function ListingDetailSections({ listing, canSeeInternal }) {
         </Card>
       ) : null}
 
+      {po ? (
+        <Card tint={v} icon="briefcase-outline" title="Office for lease">
+          <View style={styles.facts}>
+            <Fact label="Area" value={PO.areaSqft ? PO.areaSqft.toLocaleString('en-IN') : ''} unit=" sq ft" />
+            <Fact label="Monthly rent" value={PO.monthlyRent ? inr(PO.monthlyRent) : ''} />
+            <Fact label="Rent per sq ft" value={PO.rentPerSqft ? inr(PO.rentPerSqft) : ''} />
+            <Fact label="Furnishing" value={PO.officeType} />
+            <Fact label="Floor" value={PO.floor} />
+            <Fact label="Security deposit" value={PO.securityDeposit} />
+          </View>
+          <Row icon="construct-outline" label="Maintenance" value={PO.maintenance} />
+          <Row icon="business-outline" label="Building" value={PO.buildingName} />
+          <Row icon="navigate-outline" label="How to reach" value={PO.howToReach} />
+          <Row icon="time-outline" label="Access" value={[PO.open24 ? 'Open 24 hours' : '', PO.sundayOpen ? 'Open on Sunday' : ''].filter(Boolean).join(' · ')} last />
+          {PO.facilities?.length ? (
+            <View style={{ marginTop: 10 }}>
+              <Text style={styles.subLabel}>Inside the office</Text>
+              {PO.facilities.map((f, i) => (
+                <View key={`${f.name}-${i}`} style={[styles.floorRow, i === PO.facilities.length - 1 && { borderBottomWidth: 0 }]}>
+                  <Text style={styles.floorName}>{f.name}</Text>
+                  <Text style={styles.floorMeta}>{f.value || '—'}</Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
+        </Card>
+      ) : null}
+
       {mo && office.rating ? (
         <Card tint={v} icon="star-outline" title="Rating">
           <Text style={styles.rating}>
@@ -187,7 +217,7 @@ export default function ListingDetailSections({ listing, canSeeInternal }) {
       ) : null}
 
       {description ? (
-        <Card icon="document-text-outline" title={pg ? 'About this PG' : 'About this space'}>
+        <Card icon="document-text-outline" title={pg ? 'About this PG' : po ? 'About this office' : 'About this space'}>
           <Text style={styles.about} numberOfLines={more ? undefined : 4}>{description}</Text>
           {description.length > 220 ? (
             <Pressable onPress={() => setMore((m) => !m)} hitSlop={6}>

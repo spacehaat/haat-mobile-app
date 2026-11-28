@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../../../context/AuthContext';
-import { canManageInventory, defaultTabPathForUser, isAdmin } from '../../../../lib/access';
+import { canManageInventory, canEnableListings, defaultTabPathForUser, isAdmin } from '../../../../lib/access';
 import { mobileApi } from '../../../../lib/api';
 import { formatRupees } from '../../../../lib/expenses';
 import { IMAGE_MEDIA_TYPES, assetToFile } from '../../../../components/space-editor/fields';
@@ -43,6 +43,7 @@ export default function VirtualOfficeFormScreen() {
   const editId = typeof id === 'string' && id ? id : null;
   const { user } = useAuth();
   const admin = isAdmin(user);
+  const canEnable = canEnableListings(user);
   const navigation = useNavigation();
   const qc = useQueryClient();
   const [form, setForm] = useState(EMPTY);
@@ -182,15 +183,23 @@ export default function VirtualOfficeFormScreen() {
           <Field label="Operator phone">
             <TextInput style={styles.input} value={form.phoneNumber} onChangeText={set('phoneNumber')} keyboardType="phone-pad" placeholder="Phone" placeholderTextColor={colors.faint} />
           </Field>
-          <Field label="Status">
-            <View style={styles.seg}>
-              {['Active', 'Inactive'].map((s) => (
-                <Pressable key={s} style={[styles.segBtn, form.status === s && { backgroundColor: V.color }]} onPress={() => set('status')(s)}>
-                  <Text style={[styles.segText, form.status === s && { color: '#fff' }]}>{s}</Text>
-                </Pressable>
-              ))}
-            </View>
-          </Field>
+          {canEnable ? (
+            <Field label="Status">
+              <View style={styles.seg}>
+                {['Active', 'Inactive'].map((s) => (
+                  <Pressable key={s} style={[styles.segBtn, form.status === s && { backgroundColor: V.color }]} onPress={() => set('status')(s)}>
+                    <Text style={[styles.segText, form.status === s && { color: '#fff' }]}>{s}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </Field>
+          ) : (
+            <Field label="Status">
+              <Text style={styles.statusNote}>
+                {editId ? `${form.status}. Only staff allowed to enable properties can change it.` : 'Saved as Inactive until someone allowed to enable properties switches it on.'}
+              </Text>
+            </Field>
+          )}
           <Field label="City tier">
             <View style={styles.seg}>
               {TIERS.map((t) => (
@@ -293,6 +302,7 @@ export default function VirtualOfficeFormScreen() {
 }
 
 const styles = StyleSheet.create({
+  statusNote: { fontSize: 13.5, color: colors.muted, lineHeight: 19 },
   screen: { flex: 1, backgroundColor: colors.surface2 },
   content: { padding: 16, paddingBottom: 48, gap: 12 },
   card: { backgroundColor: colors.surface, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: colors.border },

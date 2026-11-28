@@ -13,7 +13,7 @@ const V = VERTICALS['managed-office'];
 const digits = (v) => String(v).replace(/[^\d]/g, '');
 
 /* ---------- Managed office: basics ---------- */
-export function MoBasicsStep({ form, patch, options, isEdit, isAdmin }) {
+export function MoBasicsStep({ form, patch, options, isEdit, canEnable }) {
   return (
     <>
       <TextField label="Office name" required value={form.name} onChange={(v) => patch('name', v)} placeholder="e.g. Smartworks One Horizon Center" />
@@ -40,23 +40,17 @@ export function MoBasicsStep({ form, patch, options, isEdit, isAdmin }) {
       <ToggleRow icon="rocket-outline" label="New launch" hint="Shows a “New launch” badge on the website" value={form.isNewLaunch} onChange={(v) => patch('isNewLaunch', v)} />
 
       <Group title="On the website">
-        <ToggleRow icon="eye-outline" label="Show on website" hint="Turn off to hide the office without deleting it" value={form.isActive} onChange={(v) => patch('isActive', v)} />
-        {isAdmin ? (
-          <ChoiceChips
-            label="Status"
-            hint="Only Approved offices are live"
-            options={options.statuses.map((s) => ({ value: s.key, label: s.label.replace(' (live on website)', '') }))}
-            value={form.status}
-            onChange={(v) => patch('status', v)}
-          />
-        ) : (
-          <View style={st.infoBox}>
-            <Ionicons name="information-circle-outline" size={18} color={colors.muted} />
-            <Text style={st.infoText}>
-              {isEdit ? 'Only admins can change the status.' : 'New offices are saved as Pending until an admin approves them.'}
-            </Text>
-          </View>
-        )}
+        {canEnable ? (
+          <ToggleRow icon="eye-outline" label="Show on website" hint="Turn off to hide the office without deleting it" value={form.isActive} onChange={(v) => patch('isActive', v)} />
+        ) : null}
+        <View style={st.infoBox}>
+          <Ionicons name="information-circle-outline" size={18} color={colors.muted} />
+          <Text style={st.infoText}>
+            {canEnable
+              ? 'Approve or reject the office from its listing page.'
+              : isEdit ? 'Only staff allowed to enable properties can change the status.' : 'New offices are saved as Pending until someone allowed to enable properties approves them.'}
+          </Text>
+        </View>
         {isEdit ? (
           <TextField
             label="Web address"

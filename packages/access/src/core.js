@@ -33,6 +33,36 @@ export function cityScope(user) {
   return cities.length ? cities : [];
 }
 
+/** May approve / reject a property and switch it on or off on the website (admins always). */
+export function canEnableListings(user) {
+  return can(user, PERMISSIONS.LISTINGS_ENABLE);
+}
+
+/**
+ * Space types a user can be given; each opens one inventory section (same as the backend's USER_SPACE_TYPES).
+ * OS = the older "Office space" code, which opens both office sections.
+ */
+export const MODULE_SPACE_TYPES = {
+  coworking: ['CW'],
+  'managed-office': ['MO', 'OS'],
+  'private-office': ['PO', 'OS'],
+  coliving: ['CL'],
+  'virtual-office': ['VO'],
+};
+export const INVENTORY_MODULES = Object.keys(MODULE_SPACE_TYPES);
+
+/** Inventory sections the user may see: all for admins, else only those their space types open. */
+export function inventoryModules(user) {
+  if (!user) return [];
+  if (user.role === 'admin') return [...INVENTORY_MODULES];
+  const types = new Set((user.spaceTypes || []).filter(Boolean));
+  return INVENTORY_MODULES.filter((m) => MODULE_SPACE_TYPES[m].some((t) => types.has(t)));
+}
+
+export function canUseModule(user, vertical) {
+  return inventoryModules(user).includes(vertical);
+}
+
 /** Space-type scope for members. Empty/unset = no restriction (back-compat). */
 export function spaceTypeScope(user) {
   if (!user || user.role === 'admin') return null;

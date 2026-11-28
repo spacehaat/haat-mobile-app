@@ -8,7 +8,7 @@ import { mobileApi } from '../../lib/api';
 import {
   ASSIGNABLE_CITIES, PERM_LABELS, permissionLabel,
 } from '../../lib/access';
-import { LEAD_SPACE_TYPES } from '../../constants/spaceTypes';
+import { USER_SPACE_TYPES, expandUserSpaceTypes } from '../../constants/spaceTypes';
 import { colors } from '../../constants/theme';
 import ModalSafeArea from '../ui/ModalSafeArea';
 
@@ -54,7 +54,7 @@ export default function UserAccessForm({
         password: '',
         role: editing.role || 'member',
         cities: editing.cities || [],
-        spaceTypes: editing.spaceTypes || [],
+        spaceTypes: expandUserSpaceTypes(editing.spaceTypes || []),
         permissions: editing.permissions || [],
       });
     } else {
@@ -217,12 +217,12 @@ export default function UserAccessForm({
                 </View>
               </Field>
 
-              <Field label="Space types — member can access these lead types">
+              <Field label="Space types — member sees only these Inventory sections and leads">
                 <View style={styles.chipRow}>
-                  {LEAD_SPACE_TYPES.map((t) => (
+                  {USER_SPACE_TYPES.map((t) => (
                     <Chip
                       key={t.value}
-                      label={`${t.label} (${t.value})`}
+                      label={t.label}
                       active={form.spaceTypes.includes(t.value)}
                       onPress={() => toggleInArray('spaceTypes', t.value)}
                     />

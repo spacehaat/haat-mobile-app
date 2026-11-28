@@ -10,7 +10,7 @@ import { mobileApi } from '../../../lib/api';
 import { useAuth } from '../../../context/AuthContext';
 import { useProposal } from '../../../context/ProposalContext';
 import {
-  cityOptionsForUser, canSeeFreshness, canSeeProposalBuilder, canManageInventory,
+  cityOptionsForUser, canSeeFreshness, canSeeProposalBuilder, canManageInventory, inventoryModules,
 } from '../../../lib/access';
 import ListingCard from '../../../components/ui/ListingCard';
 import InventoryFiltersModal, { INITIAL_FILTER } from '../../../components/ui/InventoryFiltersModal';
@@ -31,7 +31,14 @@ export default function BrowserScreen() {
   const showProposal = canSeeProposalBuilder(user);
 
   const cityOptions = useMemo(() => cityOptionsForUser(user), [user]);
-  const [vertical, setVertical] = useState('coworking');
+  // Only the sections this user's space types open (admins see all).
+  const sections = useMemo(() => {
+    const allowed = new Set(inventoryModules(user));
+    return VERTICAL_LIST.filter((v) => allowed.has(v.key));
+  }, [user]);
+  const [picked, setPicked] = useState(null);
+  const vertical = sections.some((v) => v.key === picked) ? picked : sections[0]?.key || 'coworking';
+  const noSections = sections.length === 0;
   const V = VERTICALS[vertical];
   const isVo = vertical === 'virtual-office';
   const [city, setCity] = useState('All cities');
@@ -67,7 +74,7 @@ export default function BrowserScreen() {
               <Ionicons name="leaf-outline" size={24} color={colors.brand} />
             </Pressable>
           ) : null}
-          {canManageInventory(user) ? (
+          {canManageInventory(user) && !noSections ? (
             <Pressable onPress={() => router.push(isVo ? '/(tabs)/browser/vo/edit' : `/(tabs)/browser/add?vertical=${vertical}`)} style={[styles.addBtn, { backgroundColor: V.color }]} hitSlop={6}>
               <Ionicons name="add" size={18} color="#fff" />
               <Text style={styles.addBtnText}>Add</Text>
@@ -76,7 +83,7 @@ export default function BrowserScreen() {
         </View>
       ),
     });
-  }, [navigation, user, proposalCount, showProposal, vertical, V.color, isVo]);
+  }, [navigation, user, proposalCount, showProposal, vertical, V.color, isVo, noSections]);
 
   const onSearchChange = useCallback((text) => {
     setSearch(text);
@@ -96,7 +103,7 @@ export default function BrowserScreen() {
     queryKey,
     queryFn: () => mobileApi.listListings(buildListingFilters(bFilter, city, debouncedSearch, page, pageSize, status, vertical)),
     placeholderData: (prev) => prev,
-    enabled: !isVo,
+    enabled: !isVo && !noSections,
   });
   const { data: meta } = useQuery({
     queryKey: ['listings-meta'],
@@ -126,14 +133,15 @@ export default function BrowserScreen() {
 
   const switchVertical = (key) => {
     if (key === vertical) return;
-    setVertical(key);
+    setPicked(key);
     setBFilter(INITIAL_FILTER);
     setStatus('all');
   };
 
-  const verticalSwitch = (
+  // One section only: no switch, just that section.
+  const verticalSwitch = sections.length < 2 ? null : (
       <View style={styles.vSwitch}>
-        {VERTICAL_LIST.map((v) => {
+        {sections.map((v) => {
           const on = v.key === vertical;
           return (
             <Pressable
@@ -147,7 +155,7 @@ export default function BrowserScreen() {
                 <Ionicons name={on ? v.icon : `${v.icon}-outline`} size={18} color={on ? '#fff' : v.color} />
               </View>
               <View style={{ alignSelf: 'stretch' }}>
-                <Text style={[styles.vLabel, on && { color: '#fff' }]} numberOfLines={1}>{v.short || v.plural}</Text>
+                <Text style={[styles.vLabel, on && { color: '#fff' }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{v.short || v.plural}</Text>
               </View>
             </Pressable>
           );
@@ -164,7 +172,9 @@ export default function BrowserScreen() {
           <Ionicons name="search" size={18} color={colors.muted} style={styles.searchIcon} />
           <TextInput
             style={styles.search}
-            placeholder={vertical === 'managed-office' ? 'Search office, building, area…' : vertical === 'coliving' ? 'Search PG name, area, PG id…' : 'Search space name, area, landmark…'}
+            placeholder={vertical === 'managed-office' ? 'Search office, building, area, city…'
+              : vertical === 'private-office' ? 'Search office, building, area, city…'
+                : vertical === 'coliving' ? 'Search PG name, area, city, PG id…' : 'Search space, brand, area, city…'}
             placeholderTextColor={colors.faint}
             value={search}
             onChangeText={onSearchChange}
@@ -232,6 +242,18 @@ export default function BrowserScreen() {
       {error ? <Text style={styles.error}>{error.message}</Text> : null}
     </View>
   );
+
+  if (noSections) {
+    return (
+      <View style={styles.noAccess}>
+        <Ionicons name="lock-closed-outline" size={36} color={colors.faint} />
+        <Text style={styles.noAccessTitle}>No inventory sections yet</Text>
+        <Text style={styles.noAccessText}>
+          Your account has no space types assigned. Ask an admin to give you Coworking, Managed office, Private office, PG or Virtual office access.
+        </Text>
+      </View>
+    );
+  }
 
   if (isVo) {
     return (
@@ -315,9 +337,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.brand, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6, marginRight: 4,
   },
   propBadgeText: { color: '#fff', fontWeight: '800', fontSize: 12 },
-  vSwitch: { flexDirection: 'row', gap: 6, marginBottom: 12 },
+  vSwitch: { flexDirection: 'row', gap: 5, marginBottom: 12 },
   vCard: {
-    flex: 1, alignItems: 'center', gap: 4, paddingVertical: 8, paddingHorizontal: 4, borderRadius: 14,
+    flex: 1, alignItems: 'center', gap: 4, paddingVertical: 8, paddingHorizontal: 3, borderRadius: 14,
     backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
   },
   vIcon: { width: 30, height: 30, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
@@ -342,6 +364,9 @@ const styles = StyleSheet.create({
   },
   filterDotText: { color: '#fff', fontSize: 10, fontWeight: '800' },
   statusRow: { gap: 8, paddingBottom: 10, paddingRight: 12 },
+  noAccess: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 10, backgroundColor: colors.surface2 },
+  noAccessTitle: { fontSize: 17, fontWeight: '800', color: colors.ink },
+  noAccessText: { fontSize: 14, color: colors.muted, textAlign: 'center', lineHeight: 20 },
   statusTab: {
     flexDirection: 'row', alignItems: 'center', gap: 6, height: 38, paddingHorizontal: 13,
     borderRadius: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,

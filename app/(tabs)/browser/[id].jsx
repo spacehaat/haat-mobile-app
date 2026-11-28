@@ -10,7 +10,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { mobileApi } from '../../../lib/api';
 import { useAuth } from '../../../context/AuthContext';
 import { useProposal } from '../../../context/ProposalContext';
-import { canVerifyListings, canSeeProposalBuilder, canManageInventory, isAdmin } from '../../../lib/access';
+import {
+  canVerifyListings, canSeeProposalBuilder, canManageInventory, isAdmin, canEnableListings,
+} from '../../../lib/access';
 import FreshBadge from '../../../components/ui/FreshBadge';
 import ListingStatusBadge from '../../../components/ui/StatusBadge';
 import SpaceEditor from '../../../components/space-editor/SpaceEditor';
@@ -130,6 +132,7 @@ function ListingDetailBody() {
   const queryClient = useQueryClient();
   const canVerify = canVerifyListings(user);
   const admin = isAdmin(user);
+  const canEnable = canEnableListings(user);
   const canEdit = canManageInventory(user);
   const showProposal = canSeeProposalBuilder(user);
   const { isInProposal, addToProposal, removeFromProposal } = useProposal();
@@ -191,7 +194,8 @@ function ListingDetailBody() {
   const V = verticalOf(listing);
   const mo = V.key === 'managed-office';
   const pg = V.key === 'coliving';
-  const editable = listing.source === 'workspace' || listing.source === 'managed-office' || listing.source === 'pg';
+  const po = V.key === 'private-office';
+  const editable = ['workspace', 'managed-office', 'pg', 'private-office'].includes(listing.source);
 
   const openGallery = (index = 0) => {
     setGalleryIndex(index);
@@ -211,7 +215,7 @@ function ListingDetailBody() {
     <View style={styles.screen}>
       <Stack.Screen
         options={{
-          title: mo ? 'Managed office' : pg ? 'PG / Coliving' : 'Coworking space',
+          title: mo ? 'Managed office' : pg ? 'PG / Coliving' : po ? 'Private office' : 'Coworking space',
           headerRight: canEdit && editable ? () => (
             <Pressable onPress={() => router.push(`/(tabs)/browser/edit/${lid}`)} hitSlop={8} style={[styles.headerEdit, { backgroundColor: V.soft }]}>
               <Ionicons name="create-outline" size={18} color={V.color} />
@@ -256,7 +260,7 @@ function ListingDetailBody() {
           </View>
         ) : null}
 
-        {admin && editable ? (
+        {canEnable && editable ? (
           <StatusActions
             current={listing.status?.key}
             pg={pg}
@@ -267,14 +271,19 @@ function ListingDetailBody() {
         ) : null}
 
         <View style={styles.stats}>
-          <Stat label={pg ? 'Rent from' : 'Starting from'} value={listing.price ? inr(listing.price) : '—'} unit={listing.price ? (pg ? '/mo' : '/seat/mo') : 'on request'} />
-          {pg ? (
+          <Stat label={pg ? 'Rent from' : po ? 'Monthly rent' : 'Starting from'} value={listing.price ? inr(listing.price) : '—'} unit={listing.price ? (pg || po ? '/mo' : '/seat/mo') : 'on request'} />
+          {po ? (
+            <>
+              <Stat label="Area" value={listing.privateOffice?.areaSqft ? listing.privateOffice.areaSqft.toLocaleString('en-IN') : '—'} unit={listing.privateOffice?.areaSqft ? 'sq ft' : ''} />
+              <Stat label="Furnishing" value={listing.privateOffice?.officeType || '—'} />
+            </>
+          ) : pg ? (
             <>
               <Stat label="Room types" value={(listing.plans || []).length || '—'} />
               <Stat label="For" value={listing.pg?.gender || '—'} />
             </>
           ) : <Stat label="Total seats" value={listing.seats || '—'} />}
-          {pg ? null : mo ? (
+          {pg || po ? null : mo ? (
             <Stat label="Min seats" value={listing.office?.minSeats || '—'} unit={listing.office?.minMonths ? `${listing.office.minMonths}-mo lock-in` : ''} />
           ) : (
             <Stat label="Plans" value={(listing.plans || []).length || '—'} unit={types[0] || ''} />
@@ -287,7 +296,7 @@ function ListingDetailBody() {
           {canEdit && editable ? (
             <Pressable style={[styles.linkBtn, styles.editBtn, { backgroundColor: V.color, borderColor: V.color }]} onPress={() => router.push(`/(tabs)/browser/edit/${lid}`)}>
               <Ionicons name="create-outline" size={18} color="#fff" />
-              <Text style={[styles.linkText, { color: '#fff' }]}>{mo ? 'Edit office details' : pg ? 'Edit PG details' : 'Edit space details'}</Text>
+              <Text style={[styles.linkText, { color: '#fff' }]}>{mo || po ? 'Edit office details' : pg ? 'Edit PG details' : 'Edit space details'}</Text>
             </Pressable>
           ) : null}
           {listing.url ? (
@@ -322,7 +331,7 @@ function ListingDetailBody() {
       {showProposal && !pg ? (
         <View style={[styles.bar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.barPrice}>{listing.price ? inr(listing.price) : 'On request'}<Text style={styles.barUnit}>{listing.price ? ' /seat/mo' : ''}</Text></Text>
+            <Text style={styles.barPrice}>{listing.price ? inr(listing.price) : 'On request'}<Text style={styles.barUnit}>{listing.price ? (po ? ' /mo' : ' /seat/mo') : ''}</Text></Text>
             <Text style={styles.barSub} numberOfLines={1}>{listing.seats ? `${listing.seats} seats · ` : ''}{listing.city}</Text>
           </View>
           {inProposal ? (

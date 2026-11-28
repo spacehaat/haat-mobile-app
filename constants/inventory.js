@@ -47,6 +47,20 @@ export const VERTICALS = {
     border: '#FDBA74',
     blurb: 'Rooms for students & professionals',
   },
+  // Offices for lease: area, rent, furnishing (the admin panel's "Private offices").
+  'private-office': {
+    key: 'private-office',
+    label: 'Private office',
+    short: 'Private',
+    plural: 'Private offices',
+    one: 'private office',
+    many: 'private offices',
+    icon: 'briefcase',
+    color: '#6D4C41',
+    soft: '#EFEBE9',
+    border: '#BCAAA4',
+    blurb: 'Offices for lease by area and rent',
+  },
   // Kept apart from coworking: business-address plans, with their own list and form.
   'virtual-office': {
     key: 'virtual-office',
@@ -62,7 +76,27 @@ export const VERTICALS = {
     blurb: 'Business address, GST & mail handling',
   },
 };
-export const VERTICAL_LIST = [VERTICALS.coworking, VERTICALS['managed-office'], VERTICALS.coliving, VERTICALS['virtual-office']];
+export const VERTICAL_LIST = [
+  VERTICALS.coworking, VERTICALS['managed-office'], VERTICALS['private-office'], VERTICALS.coliving, VERTICALS['virtual-office'],
+];
+
+/** Private office furnishing (OfficeSpace.other_detail.office_type). */
+export const OFFICE_TYPES = [
+  { key: 'fully-furnished', label: 'Fully furnished' },
+  { key: 'semi-furnished', label: 'Semi furnished' },
+  { key: 'raw', label: 'Bare shell' },
+  { key: 'build-to-suite', label: 'Built to suit' },
+];
+
+/** Private office monthly rent filter. */
+export const PO_RENT_TIERS = [
+  { value: null, label: 'Any rent' },
+  { value: 50000, label: '≤ ₹50k' },
+  { value: 100000, label: '≤ ₹1L' },
+  { value: 200000, label: '≤ ₹2L' },
+  { value: 500000, label: '≤ ₹5L' },
+  { value: 1000000, label: '≤ ₹10L' },
+];
 export const verticalOf = (listing) => VERTICALS[listing?.vertical] || VERTICALS.coworking;
 
 /** Managed office seat types (ManagedOffice.plans.seat_type). */
@@ -121,6 +155,7 @@ export const MAX_PRICE_TIERS = [
 
 export const INITIAL_FILTER = {
   type: 'All',
+  officeType: 'All',
   fresh: 'All',
   maxPrice: null,
   minSeats: 0,
@@ -147,12 +182,29 @@ export function countActiveFilters(bFilter) {
     + (bFilter.seatType && bFilter.seatType !== 'All' ? 1 : 0)
     + (bFilter.gender && bFilter.gender !== 'All' ? 1 : 0)
     + (bFilter.food ? 1 : 0)
+    + (bFilter.officeType && bFilter.officeType !== 'All' ? 1 : 0)
   );
 }
 
 export function buildListingFilters(bFilter, city, search, page, limit = DEFAULT_PAGE_SIZE, status = 'all', vertical = 'coworking') {
   const mo = vertical === 'managed-office';
   const pg = vertical === 'coliving';
+  if (vertical === 'private-office') {
+    return {
+      vertical,
+      status: status && status !== 'all' ? status : undefined,
+      sort: bFilter.sort && bFilter.sort !== 'updated' ? bFilter.sort : undefined,
+      counts: true,
+      city: city === 'All cities' ? undefined : city,
+      fresh: bFilter.fresh === 'All' ? undefined : bFilter.fresh,
+      maxPrice: bFilter.maxPrice ?? undefined,
+      officeType: bFilter.officeType && bFilter.officeType !== 'All' ? bFilter.officeType : undefined,
+      amenities: bFilter.amenities.length ? bFilter.amenities : undefined,
+      search: search || undefined,
+      page,
+      limit,
+    };
+  }
   if (pg) {
     return {
       vertical,

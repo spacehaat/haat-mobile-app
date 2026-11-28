@@ -42,7 +42,7 @@ function MultiChips({ label, hint, options, value, onChange }) {
 
 
 /* ---------- 1. Basics ---------- */
-export function PgBasicsStep({ form, patch, options, isEdit }) {
+export function PgBasicsStep({ form, patch, options, isEdit, canEnable }) {
   const auto = form.googleAuto || {};
   return (
     <>
@@ -59,7 +59,9 @@ export function PgBasicsStep({ form, patch, options, isEdit }) {
       {isEdit && form.id ? <VerificationBox listingId={form.id} value={form.verification} color={PG_COLOR} /> : null}
 
       <Group title="On the website">
-        <ToggleRow icon="eye-outline" label="Show on website" hint="Turn off to hide the PG without deleting it" value={form.isActive} onChange={(v) => patch('isActive', v)} />
+        {canEnable ? (
+          <ToggleRow icon="eye-outline" label="Show on website" hint="Turn off to hide the PG without deleting it" value={form.isActive} onChange={(v) => patch('isActive', v)} />
+        ) : null}
         {!isEdit ? (
           <View style={st.infoBox}>
             <Ionicons name="information-circle-outline" size={18} color={colors.muted} />

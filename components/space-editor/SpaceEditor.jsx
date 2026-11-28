@@ -8,9 +8,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { mobileApi } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
-import { isAdmin as isAdminUser } from '../../lib/access';
+import { isAdmin as isAdminUser, canEnableListings } from '../../lib/access';
 import { normalizeListingRecord } from '../../lib/listingHelpers';
-import { stepsFor, toFormState, toPayload, validateSpace, emptySpace, emptyManagedOffice, emptyPg } from '../../lib/spaceForm';
+import {
+  stepsFor, toFormState, toPayload, validateSpace, emptySpace, emptyManagedOffice, emptyPg, emptyPrivateOffice,
+} from '../../lib/spaceForm';
 import { VERTICALS } from '../../constants/inventory';
 import { colors } from '../../constants/theme';
 import LoadingScreen from '../ui/LoadingScreen';
@@ -18,6 +20,7 @@ import {
   BasicsStep, LocationStep, PlansStep, HoursStep, AmenitiesStep, PhotosStep, ContactsStep, AboutStep, SeoStep,
 } from './steps';
 import { MoBasicsStep, MoLocationStep, MoPlansStep, BuildingStep } from './moSteps';
+import { PoBasicsStep, PoFacilitiesStep } from './poSteps';
 import {
   PgBasicsStep, PgLocationStep, PgRoomsStep, PgServicesStep, PgAmenitiesStep, PgAboutStep,
 } from './pgSteps';
@@ -36,6 +39,8 @@ const STEP_VIEWS = {
   moLocation: MoLocationStep,
   moPlans: MoPlansStep,
   building: BuildingStep,
+  poBasics: PoBasicsStep,
+  poFacilities: PoFacilitiesStep,
   pgBasics: PgBasicsStep,
   pgLocation: PgLocationStep,
   pgRooms: PgRoomsStep,
@@ -59,6 +64,7 @@ export default function SpaceEditor({ spaceId, vertical: addVertical = 'coworkin
   const isEdit = Boolean(spaceId);
   const { user } = useAuth();
   const admin = isAdminUser(user);
+  const canEnable = canEnableListings(user);
   const navigation = useNavigation();
   const queryClient = useQueryClient();
   const insets = useSafeAreaInsets();
@@ -72,11 +78,12 @@ export default function SpaceEditor({ spaceId, vertical: addVertical = 'coworkin
   });
   const vertical = isEdit
     ? spaceQ.data?.vertical || 'coworking'
-    : ['managed-office', 'coliving'].includes(addVertical) ? addVertical : 'coworking';
+    : ['managed-office', 'coliving', 'private-office'].includes(addVertical) ? addVertical : 'coworking';
   const V = VERTICALS[vertical];
   const mo = vertical === 'managed-office';
   const pg = vertical === 'coliving';
-  const what = mo ? 'managed office' : pg ? 'PG' : 'coworking space';
+  const po = vertical === 'private-office';
+  const what = mo ? 'managed office' : pg ? 'PG' : po ? 'private office' : 'coworking space';
   const STEPS = stepsFor(vertical);
   const optionsQ = useQuery({
     queryKey: ['space-editor-options', vertical],
@@ -85,7 +92,9 @@ export default function SpaceEditor({ spaceId, vertical: addVertical = 'coworkin
     enabled: !isEdit || Boolean(spaceQ.data),
   });
 
-  const [form, setForm] = useState(() => (isEdit ? null : toFormState(mo ? emptyManagedOffice() : pg ? emptyPg() : emptySpace())));
+  const [form, setForm] = useState(() => (isEdit ? null : toFormState(
+    mo ? emptyManagedOffice() : pg ? emptyPg() : po ? emptyPrivateOffice() : emptySpace(),
+  )));
   const [step, setStep] = useState(0);
   const [error, setError] = useState('');
   const [dirty, setDirty] = useState(false);
@@ -122,7 +131,7 @@ export default function SpaceEditor({ spaceId, vertical: addVertical = 'coworkin
   // New coworking spaces start with the common amenities ticked (set in the admin amenity list).
   const amenityDefaultsApplied = useRef(false);
   useEffect(() => {
-    if (isEdit || mo || pg || !form || amenityDefaultsApplied.current) return;
+    if (isEdit || mo || pg || po || !form || amenityDefaultsApplied.current) return;
     const defaults = optionsQ.data?.defaultAmenities;
     if (!Array.isArray(defaults)) return;
     amenityDefaultsApplied.current = true;
@@ -141,7 +150,7 @@ export default function SpaceEditor({ spaceId, vertical: addVertical = 'coworkin
     const unsub = navigation.addListener('beforeRemove', (e) => {
       if (!dirty || saveMutation.isPending || saveMutation.isSuccess) return;
       e.preventDefault();
-      Alert.alert('Discard changes?', `Your changes to this ${mo ? 'office' : pg ? 'PG' : 'space'} are not saved.`, [
+      Alert.alert('Discard changes?', `Your changes to this ${mo || po ? 'office' : pg ? 'PG' : 'space'} are not saved.`, [
         { text: 'Keep editing', style: 'cancel' },
         { text: 'Discard', style: 'destructive', onPress: () => navigation.dispatch(e.data.action) },
       ]);
@@ -162,13 +171,14 @@ export default function SpaceEditor({ spaceId, vertical: addVertical = 'coworkin
       await queryClient.invalidateQueries({ queryKey: ['listings'] });
       setDirty(false);
       if (isEdit) {
-        Alert.alert('Saved', 'Changes are saved. The website shows them right away.', [{ text: 'OK', onPress: leave }]);
+        Alert.alert('Saved', po ? 'Changes are saved.' : 'Changes are saved. The website shows them right away.', [{ text: 'OK', onPress: leave }]);
       } else {
         const live = listing?.status?.key === 'approved';
+        const where = po ? 'Inventory' : 'the website';
         Alert.alert(
-          mo ? 'Managed office added' : pg ? 'PG added' : 'Space added',
-          live ? 'It is live on the website.' : `Saved as ${pg ? 'In progress' : 'Pending'}. ${admin ? 'Approve it from the listing page to put it live.' : 'It goes live on the website once an admin approves it.'}`,
-          [{ text: mo ? 'View office' : pg ? 'View PG' : 'View space', onPress: () => router.replace(`/(tabs)/browser/${id}`) }],
+          mo ? 'Managed office added' : pg ? 'PG added' : po ? 'Private office added' : 'Space added',
+          live ? `It is live on ${where}.` : `Saved as ${pg ? 'In progress' : 'Pending'}. ${canEnable ? 'Approve it from the listing page to put it live.' : `It goes live on ${where} once someone allowed to enable properties approves it.`}`,
+          [{ text: mo || po ? 'View office' : pg ? 'View PG' : 'View space', onPress: () => router.replace(`/(tabs)/browser/${id}`) }],
         );
       }
     },
@@ -248,6 +258,7 @@ export default function SpaceEditor({ spaceId, vertical: addVertical = 'coworkin
           options={options}
           isEdit={isEdit}
           isAdmin={admin}
+          canEnable={canEnable}
         />
       </ScrollView>
 
@@ -266,7 +277,7 @@ export default function SpaceEditor({ spaceId, vertical: addVertical = 'coworkin
         {isEdit || last ? (
           <Pressable style={[s.saveBtn, { backgroundColor: V.color }, (saving || uploading) && s.off]} onPress={save} disabled={saving}>
             {saving ? <ActivityIndicator color="#fff" /> : <Ionicons name="checkmark-circle" size={18} color="#fff" />}
-            <Text style={s.saveText}>{saving ? 'Saving…' : isEdit ? 'Save' : mo ? 'Add office' : pg ? 'Add PG' : 'Add space'}</Text>
+            <Text style={s.saveText}>{saving ? 'Saving…' : isEdit ? 'Save' : mo || po ? 'Add office' : pg ? 'Add PG' : 'Add space'}</Text>
           </Pressable>
         ) : null}
       </View>

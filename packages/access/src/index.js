@@ -17,6 +17,11 @@ export {
   canCreateLead,
   cityScope,
   spaceTypeScope,
+  canEnableListings,
+  MODULE_SPACE_TYPES,
+  INVENTORY_MODULES,
+  inventoryModules,
+  canUseModule,
 } from './core.js';
 
 export {
